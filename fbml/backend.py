@@ -8,6 +8,7 @@ A simple backend written in llvm
 from functools import reduce
 from operator import itemgetter
 import collections
+import llvm
 import llvm.core as llvmc
 
 import logging
@@ -79,7 +80,7 @@ class LLVMBackend(object):
                     ( method.arguments[a] for method in methods ))
                     for a in argument_names}
 
-        sorted_args = list(sorted(arguments.items(), key= itemgetter(0)))
+        sorted_args = list(sorted(arguments.items(), key=itemgetter(0)))
 
         return_values = reduce(value.union,
                 (method.predict_value() for method in methods))
@@ -109,8 +110,8 @@ class LLVMBackend(object):
 
         bldr.ret(val)
         try:
-            self.module.verify()
-        except Exception as e:
+            function.verify()
+        except llvm.LLVMException as e:
             print(eval(str(e)).decode(encoding='UTF-8'))
         return function
 
@@ -155,7 +156,7 @@ class LLVMBackend(object):
         Compiles a method on block
         """
         nodes = list(reversed(method.target.nodes_in_order()))
-        method_values = {}
+        method_values = values.copy()
         for node in nodes:
             print(node, method_values)
             if not node.sources:
@@ -180,9 +181,31 @@ class LLVMBackend(object):
                             sorted(node.sources.items(),key=itemgetter(0))],
                                 name=str(node))
                 else:
-                    raise Exception()
+                    args = list(
+                            sorted(node.sources.items(), key=itemgetter(0))
+                            )
+                    arg_val = [method_values[node] for name, node in args]
+                    val = bldr.call(
+                            self.get_function_from_methods(methods),
+                            arg_val,
+                            str(node))
             method_values[node] = val
         return bldr, method_values[method.target]
+
+    def get_function_from_methods(self, methods):
+        """
+        get_function
+        """
+        print(methods)
+        key = tuple(methods)
+        if key in self.functions:
+            return self.functions[key]
+        else:
+            first, *_ = methods
+            print(first)
+            name = first.name
+            argument_names = list(first.arguments)
+            return self.compile_function(name, argument_names, methods)
 
     def create_constant_from_values(self, consts):
         val, = consts

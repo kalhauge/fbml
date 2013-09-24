@@ -35,6 +35,8 @@ class Method (object):
 
     def __repr__(self):
         return self.name + '-' + str(id(self))
+
+
 class Node (object):
     """
     Node

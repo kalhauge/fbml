@@ -110,6 +110,24 @@ def test_clamp():
         [clamp_middle, clamp_high, clamp_low]))
     #assert False
 
+FACTORIAL = {
+        'factorial' : [
+            Method('factorial',
+                {'a': singleton(1)}, {},
+                Node('a', {})
+            ),
+            Method('factorial',
+                {'a': INTEGERS}, {'c': singleton(1)},
+                Node('factorial', {
+                    'a': Node('sub', {
+                            'a' : Node('a', {}),
+                            'b' : Node('c', {})
+                        })
+                    })
+                )
+            ]
+        }
+
 def test_factorial():
     """
     Test the output of::
@@ -126,26 +144,38 @@ def test_factorial():
         end b
 
     """
-    factorial_1 = Method('factorial',
-            {'a': singleton(1)},
-            {},
-            Node('a', {})
-            )
+    methods = backend.METHODS.copy()
+    methods.update(FACTORIAL)
+    compiler = backend.LLVMBackend(methods)
+    print(FACTORIAL['factorial'])
+    print(compiler.compile_function('factorial',
+        ['a'], FACTORIAL['factorial']))
+    assert False
 
-    factorial_z = Method('factorial',
-            {'a': INTEGERS},
-            {'c': singleton(1)},
-            Node('factorial', {
-                'a': Node('sub',
-                    {
-                        'a' : Node('a',{}),
-                        'b' : Node('c', {})
-                    })
-                })
-            )
+def test_deep_call():
+    """
+    Test the output of::
+
+        method factorial_test
+            a : Z
+        procedure
+            b = factorial(a)
+        end b
+    """
 
     methods = backend.METHODS.copy()
-    methods.update({'factorial' : [factorial_1, factorial_z]})
+    methods.update(FACTORIAL)
+
     compiler = backend.LLVMBackend(methods)
-    print(compiler.compile_function('clamp', ['a'], [factorial_1, factorial_z]))
+    compiler.compile_function('factorial_test',
+            ['a'], [
+                Method('factorial_test',
+                    {'a': INTEGERS},
+                    {},
+                    Node('factorial', {'a': Node('a', {})})
+                    )
+                ]
+            )
+    print(compiler.module)
+    compiler.module.verify()
     assert False
