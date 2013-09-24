@@ -46,8 +46,11 @@ METHODS = {
     'neg' : [
         model.Method('add',
             {'a': value.INTEGERS}, {}, 'neg')
-        ]
-
+        ],
+    'sub' : [
+        model.Method('sub',
+            {'a': value.INTEGERS}, {}, 'sub')
+        ],
 }
 
 
@@ -105,7 +108,10 @@ class LLVMBackend(object):
         bldr, val = self.compile_methods(methods, return_values, values, bldr)
 
         bldr.ret(val)
-        self.module.verify()
+        try:
+            self.module.verify()
+        except Exception as e:
+            print(eval(str(e)).decode(encoding='UTF-8'))
         return function
 
     def compile_methods(self, methods, ret_vals, values, bldr):
@@ -115,7 +121,6 @@ class LLVMBackend(object):
 
             true_block = func.append_basic_block('true-' + str(head))
             false_block = func.append_basic_block('false-' + str(head))
-            merge_block = func.append_basic_block('merge-' + str(head))
 
             condition = self.compile_constraint(head.arguments,
                     values, bldr)
@@ -124,18 +129,21 @@ class LLVMBackend(object):
             true_bldr, val_true = self.compile_method(head,
                     values,
                     llvmc.Builder.new(true_block))
-            true_bldr.branch(merge_block)
 
             false_bldr, val_false = self.compile_methods(tail,
                     ret_vals,
                     values,
                     llvmc.Builder.new(false_block))
+
+
+            merge_block = func.append_basic_block('merge-' + str(head))
+            true_bldr.branch(merge_block)
             false_bldr.branch(merge_block)
 
             m_bldr = llvmc.Builder.new(merge_block)
             phi = m_bldr.phi(llvm_type_of_value_set(ret_vals))
             phi.add_incoming(val_true, true_block)
-            phi.add_incoming(val_false, false_block)
+            phi.add_incoming(val_false, false_bldr.basic_block)
             return m_bldr, phi
 
         else:

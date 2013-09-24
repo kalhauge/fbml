@@ -26,7 +26,7 @@ def test_increment():
 
     compiler = backend.LLVMBackend(backend.METHODS)
     print(compiler.compile_function(method.name , ['a'], [method]))
-    assert False
+    # assert False
 
 
 def test_abs():
@@ -60,5 +60,92 @@ def test_abs():
 
     compiler = backend.LLVMBackend(backend.METHODS)
     print(compiler.compile_function('abs' , ['a'], [abs_minus, abs_plus]))
-    assert False
+    #assert False
 
+def test_clamp():
+    """
+    Test the output of::
+
+        method clamp
+            a <= high, a >= low, a : Z, high : Z, low : Z
+        procedure
+        end a
+
+        method clamp
+            a > high, a : Z, high : Z, low : Z
+        procedure
+        end high
+
+        method clamp
+            a < low, a : Z, high : Z, low : Z
+        procedure
+        end low
+
+    """
+    clamp_middle = Method('clamp',
+            {'a': INTEGERS,
+             'high' : INTEGERS,
+             'low'  : INTEGERS },
+            {},
+            Node('a', {})
+            )
+    clamp_high = Method('clamp',
+            {'a': INTEGERS,
+             'high' : INTEGERS,
+             'low'  : INTEGERS },
+            {},
+            Node('high', {})
+            )
+
+    clamp_low = Method('clamp',
+            {'a': INTEGERS,
+             'high' : INTEGERS,
+             'low'  : INTEGERS },
+            {},
+            Node('low', {}))
+
+    compiler = backend.LLVMBackend(backend.METHODS)
+    print(compiler.compile_function('clamp',
+        ['a', 'high', 'low'],
+        [clamp_middle, clamp_high, clamp_low]))
+    #assert False
+
+def test_factorial():
+    """
+    Test the output of::
+
+        method factorial
+            a : {1}
+        procedure
+        end a
+
+        method factorial
+            a > 1, a : Z
+        procedure
+            b = factorial(a - 1) * a
+        end b
+
+    """
+    factorial_1 = Method('factorial',
+            {'a': singleton(1)},
+            {},
+            Node('a', {})
+            )
+
+    factorial_z = Method('factorial',
+            {'a': INTEGERS},
+            {'c': singleton(1)},
+            Node('factorial', {
+                'a': Node('sub',
+                    {
+                        'a' : Node('a',{}),
+                        'b' : Node('c', {})
+                    })
+                })
+            )
+
+    methods = backend.METHODS.copy()
+    methods.update({'factorial' : [factorial_1, factorial_z]})
+    compiler = backend.LLVMBackend(methods)
+    print(compiler.compile_function('clamp', ['a'], [factorial_1, factorial_z]))
+    assert False
