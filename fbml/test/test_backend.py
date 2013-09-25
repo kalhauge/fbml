@@ -25,7 +25,7 @@ def test_increment():
     method = Method('increment', {'a': INTEGERS}, {'b': singleton(1)}, node_c)
 
     compiler = backend.LLVMBackend(backend.METHODS)
-    print(compiler.compile_function(method.name , ['a'], [method]))
+    print(compiler.build_function(method.name , ['a'], [method]))
     # assert False
 
 
@@ -59,7 +59,7 @@ def test_abs():
 
 
     compiler = backend.LLVMBackend(backend.METHODS)
-    print(compiler.compile_function('abs' , ['a'], [abs_minus, abs_plus]))
+    print(compiler.build_function('abs' , ['a'], [abs_minus, abs_plus]))
     #assert False
 
 def test_clamp():
@@ -105,7 +105,7 @@ def test_clamp():
             Node('low', {}))
 
     compiler = backend.LLVMBackend(backend.METHODS)
-    print(compiler.compile_function('clamp',
+    print(compiler.build_function('clamp',
         ['a', 'high', 'low'],
         [clamp_middle, clamp_high, clamp_low]))
     #assert False
@@ -148,7 +148,7 @@ def test_factorial():
     methods.update(FACTORIAL)
     compiler = backend.LLVMBackend(methods)
     print(FACTORIAL['factorial'])
-    print(compiler.compile_function('factorial',
+    print(compiler.build_function('factorial',
         ['a'], FACTORIAL['factorial']))
     assert False
 
@@ -167,7 +167,7 @@ def test_deep_call():
     methods.update(FACTORIAL)
 
     compiler = backend.LLVMBackend(methods)
-    compiler.compile_function('factorial_test',
+    compiler.build_function('factorial_test',
             ['a'], [
                 Method('factorial_test',
                     {'a': INTEGERS},
@@ -177,5 +177,5 @@ def test_deep_call():
                 ]
             )
     print(compiler.module)
-    compiler.module.verify()
+    #compiler.module.verify()
     assert False

@@ -18,8 +18,8 @@ from fbml import value
 from fbml import model
 
 
-BlockData = collections.namedtuple('Block', [
-    'values',
+CompileContext = collections.namedtuple('CompileContext', [
+    'data',
     'bldr',
     ])
 
@@ -50,10 +50,19 @@ METHODS = {
         ],
     'sub' : [
         model.Method('sub',
-            {'a': value.INTEGERS}, {}, 'sub')
+            {'a': value.INTEGERS, 'b': value.INTEGERS}, {}, 'sub')
         ],
 }
 
+
+def order_arguments(arguments):
+    """
+    requires a strict alpha betical order of arguments
+    """
+    return list(sorted(arguments.items(), key=itemgetter(0)))
+
+def copy_context(context):
+    return CompileContext(context.data.copy(), context.bldr)
 
 class LLVMBackend(object):
     """
@@ -65,13 +74,13 @@ class LLVMBackend(object):
         self.methods = methods
         self.functions = {}
 
-    def compile_constraint(self, arguments, values, bldr):
+    def compile_constraint(self, arguments, context):
         """
         compiles the constraint of a branch, returns a true block
         """
-        return llvm_constant('Boolean', True)
+        return llvm_constant('Boolean', True), context.bldr
 
-    def compile_function(self, name, argument_names, methods):
+    def build_function(self, name, argument_names, methods):
         """
         Creates a LLVM function from all of these methods. Assumes that the
         methods have the same argument names.
@@ -80,7 +89,7 @@ class LLVMBackend(object):
                     ( method.arguments[a] for method in methods ))
                     for a in argument_names}
 
-        sorted_args = list(sorted(arguments.items(), key=itemgetter(0)))
+        sorted_args = order_arguments(arguments)
 
         return_values = reduce(value.union,
                 (method.predict_value() for method in methods))
@@ -106,35 +115,36 @@ class LLVMBackend(object):
             llvm_arg.name = name
             values[name] = llvm_arg
 
-        bldr, val = self.compile_methods(methods, return_values, values, bldr)
+        val, bldr = self.compile_methods(methods, return_values,
+                CompileContext(values, bldr))
 
         bldr.ret(val)
         try:
             function.verify()
-        except llvm.LLVMException as e:
-            print(eval(str(e)).decode(encoding='UTF-8'))
+            pass
+        except llvm.LLVMException as exc:
+            L.error(eval(str(exc)).decode(encoding='UTF-8'))
         return function
 
-    def compile_methods(self, methods, ret_vals, values, bldr):
+    def compile_methods(self, methods, ret_vals, context):
         head, *tail = methods
         if tail:
-            func = bldr.basic_block.function
+            func = context.bldr.basic_block.function
 
             true_block = func.append_basic_block('true-' + str(head))
             false_block = func.append_basic_block('false-' + str(head))
 
-            condition = self.compile_constraint(head.arguments,
-                    values, bldr)
+            condition, bldr = self.compile_constraint(head.arguments, context)
             bldr.cbranch(condition, true_block, false_block)
 
-            true_bldr, val_true = self.compile_method(head,
-                    values,
-                    llvmc.Builder.new(true_block))
+            true_context = CompileContext(
+                    context.data, llvmc.Builder.new(true_block))
+            true_data, true_bldr = self.compile_method(head, true_context)
 
-            false_bldr, val_false = self.compile_methods(tail,
-                    ret_vals,
-                    values,
-                    llvmc.Builder.new(false_block))
+            false_context = CompileContext(
+                    context.data, llvmc.Builder.new(false_block))
+            false_data, false_bldr = self.compile_methods(
+                    tail, ret_vals, false_context)
 
 
             merge_block = func.append_basic_block('merge-' + str(head))
@@ -143,69 +153,96 @@ class LLVMBackend(object):
 
             m_bldr = llvmc.Builder.new(merge_block)
             phi = m_bldr.phi(llvm_type_of_value_set(ret_vals))
-            phi.add_incoming(val_true, true_block)
-            phi.add_incoming(val_false, false_bldr.basic_block)
-            return m_bldr, phi
-
+            phi.add_incoming(true_data, true_block)
+            phi.add_incoming(false_data, false_bldr.basic_block)
+            return phi, m_bldr
         else:
-            return self.compile_method(head, values, bldr)
+            return self.compile_method(head, context)
 
 
-    def compile_method(self, method, values, bldr):
+    def compile_method(self, method, context):
         """
-        Compiles a method on block
+        Compiles a method using a context
+
+        :param context:
+
+            The context.data **must** at least contain the name of the
+            arguments
+
+        :returns: the updated context.
         """
-        nodes = list(reversed(method.target.nodes_in_order()))
-        method_values = values.copy()
-        for node in nodes:
-            print(node, method_values)
+        L.debug('Compiles Method: %s %s', method, context)
+        internal = copy_context(context)
+        internal.data.update(
+                (name, self.create_constant_from_values(val))
+                for name, val in method.constants.items()
+                )
+
+        if isinstance(method.target, str):
+            return self.compile_buildin_method(method, internal)
+        else:
+            return self.compile_program_graph(method.target, internal)
+
+    def compile_buildin_method(self, method, context):
+        """
+        Buildin data
+        """
+        L.debug('Compiles buildin method: %s %s', method, context)
+        arguments = [context.data[name] for name in method.arguments]
+        function = getattr(context.bldr, method.target)
+        return function(*arguments, name=str(method)), context.bldr
+
+    def compile_program_graph(self, node, context):
+        """
+        Compiles a program_graph, uses a node
+        """
+        L.debug('Compiles program graph')
+        internal = copy_context(context)
+        for node in reversed(node.nodes_in_order()):
+            L.debug('Compiles node %s %s',node, internal)
             if not node.sources:
-                # Argument or constant.
-                try:
-                    consts = method.constants[node.name]
-                except KeyError:
-                    # argument
-                    val = values[node.name]
-                else:
-                    val = self.create_constant_from_values(consts)
+                node_data, bldr = internal.data[node.name], context.bldr
             else:
-                methods = self.methods[node.name]
-                if len(methods) == 1:
-                    #inline, no recursion allowed on none spliting
-                    #functions
-                    function, = methods
-                    if isinstance(function.target, str):
-                        #buildin
-                        val = getattr(bldr, function.target)(
-                                *[method_values[node] for name, node in
-                            sorted(node.sources.items(),key=itemgetter(0))],
-                                name=str(node))
-                else:
-                    args = list(
-                            sorted(node.sources.items(), key=itemgetter(0))
-                            )
-                    arg_val = [method_values[node] for name, node in args]
-                    val = bldr.call(
-                            self.get_function_from_methods(methods),
-                            arg_val,
-                            str(node))
-            method_values[node] = val
-        return bldr, method_values[method.target]
+                node_data, bldr = self.compile_function_call(
+                        node, internal)
+            internal.data[node] = node_data
+            internal = CompileContext(internal.data, bldr)
+        return node_data, context.bldr
 
-    def get_function_from_methods(self, methods):
+    def compile_function_call(self, node, context):
+        internal = copy_context(context)
+        internal.data.update(
+                (name, context.data[node])
+                for name, node in node.sources.items()
+                )
+        L.debug("Compiles function call %s, %s, %s", node, context, internal.bldr)
+        methods = self.methods[node.name]
+        if len(methods) == 1:
+            # Inline function
+            method, = methods
+            return self.compile_method(method, internal)
+        else:
+            arg_val = [internal.data[node] for name, node in
+                        order_arguments(node.sources)]
+            func = self.function_from_methods(methods)
+            node_data = internal.bldr.call(
+                    func,
+                    arg_val,
+                    name=str(node))
+            return node_data, internal.bldr
+
+    def function_from_methods(self, methods):
         """
         get_function
         """
-        print(methods)
         key = tuple(methods)
         if key in self.functions:
             return self.functions[key]
         else:
             first, *_ = methods
-            print(first)
             name = first.name
             argument_names = list(first.arguments)
-            return self.compile_function(name, argument_names, methods)
+            return self.build_function(name, argument_names, methods)
 
     def create_constant_from_values(self, consts):
         val, = consts
