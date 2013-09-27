@@ -62,6 +62,9 @@ def order_arguments(arguments):
     return list(sorted(arguments.items(), key=itemgetter(0)))
 
 def copy_context(context):
+    """
+    copies the context
+    """
     return CompileContext(context.data.copy(), context.bldr)
 
 class LLVMBackend(object):
@@ -121,12 +124,15 @@ class LLVMBackend(object):
         bldr.ret(val)
         try:
             function.verify()
-            pass
         except llvm.LLVMException as exc:
             L.error(eval(str(exc)).decode(encoding='UTF-8'))
         return function
 
     def compile_methods(self, methods, ret_vals, context):
+        """
+        Compiles methods
+        """
+        #TODO: REFACTOR
         head, *tail = methods
         if tail:
             func = context.bldr.basic_block.function
@@ -187,7 +193,6 @@ class LLVMBackend(object):
         """
         Buildin data
         """
-        L.debug('Compiles buildin method: %s %s', method, context)
         arguments = [context.data[name] for name in method.arguments]
         function = getattr(context.bldr, method.target)
         return function(*arguments, name=str(method)), context.bldr
@@ -196,18 +201,19 @@ class LLVMBackend(object):
         """
         Compiles a program_graph, uses a node
         """
-        L.debug('Compiles program graph')
-        internal = copy_context(context)
-        for node in reversed(node.nodes_in_order()):
-            L.debug('Compiles node %s %s',node, internal)
-            if not node.sources:
-                node_data, bldr = internal.data[node.name], context.bldr
-            else:
-                node_data, bldr = self.compile_function_call(
-                        node, internal)
-            internal.data[node] = node_data
-            internal = CompileContext(internal.data, bldr)
-        return node_data, context.bldr
+        def reduce_opr(context, node):
+            """ reduces the outputs of a compile function """
+            result, bldr = self.compile_node(node, context)
+            internal = CompileContext(context.data, bldr)
+            internal.data[node] = result
+            return internal
+        return reduce(reduce_opr, reversed(node.nodes_in_order()), context)
+
+    def compile_node(self, node, context):
+        if not node.sources:
+            return context.data[node.name], context.bldr
+        else:
+            return self.compile_function_call(node, context)
 
     def compile_function_call(self, node, context):
         internal = copy_context(context)

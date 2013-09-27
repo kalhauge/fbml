@@ -63,12 +63,6 @@ class TypeSet(object):
         if isinstance(other, TypeSet):
             return self.type == other.type
 
-# #def value(val):
-# #    """
-#     Returns a value set containing the one value
-#     """
-#     return {val}
-
 def singleton(value):
     return FiniteValueSet((value,))
 
