@@ -157,6 +157,7 @@ class LLVMBackend(object):
             true_bldr.branch(merge_block)
             false_bldr.branch(merge_block)
 
+            print(true_data, false_data)
             m_bldr = llvmc.Builder.new(merge_block)
             phi = m_bldr.phi(llvm_type_of_value_set(ret_vals))
             phi.add_incoming(true_data, true_block)
@@ -207,7 +208,8 @@ class LLVMBackend(object):
             internal = CompileContext(context.data, bldr)
             internal.data[node] = result
             return internal
-        return reduce(reduce_opr, reversed(node.nodes_in_order()), context)
+        internal = reduce(reduce_opr, reversed(node.nodes_in_order()), context)
+        return internal.data[node], internal.bldr
 
     def compile_node(self, node, context):
         if not node.sources:
