@@ -5,7 +5,9 @@
 A simple backend written in llvm
 
 """
+from copy import copy
 from functools import reduce
+from itertools import starmap
 from operator import itemgetter
 import collections
 import llvm
@@ -15,13 +17,6 @@ import logging
 L = logging.getLogger(__name__)
 
 from fbml import value
-from fbml import model
-
-
-CompileContext = collections.namedtuple('CompileContext', [
-    'data',
-    'bldr',
-    ])
 
 TYPE_MAP = {
     'Integer'  : (llvmc.Type.int(),'int'),
@@ -29,80 +24,314 @@ TYPE_MAP = {
     'Boolean'  : (llvmc.Type.int(1),'int'),
 }
 
-def llvm_constant(name, val):
-    llvm_type, type_name = TYPE_MAP[name]
-    return getattr(llvmc.Constant, type_name)(llvm_type, val)
-
-def type_of_value_set(value_set):
-    return 'Integer'
-
-def llvm_type_of_value_set(value_set):
-    return TYPE_MAP[type_of_value_set(value_set)][0]
-
-METHODS = {
-    'add' : [
-        model.Method('add',
-            {'a': value.INTEGERS, 'b': value.INTEGERS}, {}, 'add')
-        ],
-    'neg' : [
-        model.Method('add',
-            {'a': value.INTEGERS}, {}, 'neg')
-        ],
-    'sub' : [
-        model.Method('sub',
-            {'a': value.INTEGERS, 'b': value.INTEGERS}, {}, 'sub')
-        ],
+BUILDIN_MAP = {
+    'add'      : 'add',
+    'sub'      : 'sub',
+    'mul'      : 'mul',
+    'and'      : 'and_',
+    'neg'      : 'neg',
+    'ilt'      : llvmc.ICMP_SLT,
+    'igt'      : llvmc.ICMP_SGT,
+    'ile'      : llvmc.ICMP_SLE,
+    'ige'      : llvmc.ICMP_SGE,
+    'ieq'      : llvmc.ICMP_EQ,
 }
 
+INTEGER_CMP = {
+        llvmc.ICMP_SLT,
+        llvmc.ICMP_SGT,
+        llvmc.ICMP_SLE,
+        llvmc.ICMP_SGE,
+        llvmc.ICMP_EQ,
+        }
+
+
+def constant_from_value(val):
+    """
+    :param val:
+        The value
+
+    :returns: an llvm constant
+    """
+    llvm_type, type_name = TYPE_MAP[typename_of_value(val)]
+    return getattr(llvmc.Constant, type_name)(llvm_type, val)
+
+def type_of_value(val):
+    """
+    :param val:
+        The value or value set
+
+    :returns:
+        an llvm type
+    """
+    return TYPE_MAP[typename_of_value(val)][0]
+
+def typename_of_value(val):
+    """
+    :param val:
+        a value or a value set
+
+    :returns: the typename of a value
+    """
+    if isinstance(val, bool):
+        typename = 'Boolean'
+    elif isinstance(val, int):
+        typename = 'Integer'
+    else:
+        typename = 'Integer'
+        L.warning('Called typename_of_value on %s, returns "%s"', val, typename)
+    return typename
 
 def order_arguments(arguments):
     """
-    requires a strict alpha betical order of arguments
+    requires a strict alphabetical order of arguments
     """
     return list(sorted(arguments.items(), key=itemgetter(0)))
 
-def copy_context(context):
+def buildin_method(bldr, name, args):
     """
-    copies the context
+    calls an build in method
     """
-    return CompileContext(context.data.copy(), context.bldr)
+    if name in BUILDIN_MAP:
+        func = BUILDIN_MAP[name]
+        if func in INTEGER_CMP:
+            lhs, rhs = args
+            assert args[0].type == args[1].type
+            return bldr.icmp(func, lhs, rhs)
+        else:
+            try:
+                lhs, rhs = args
+                assert lhs.type == rhs.type
+            except ValueError: pass
+            return getattr(bldr, BUILDIN_MAP[name])(*args)
+
+    elif name in TYPE_MAP:
+        test = args[0].type == TYPE_MAP[name][0]
+        ret = constant_from_value(test)
+        return ret
+    else:
+        raise RuntimeError("{name} is not a buildin function".format(name=name))
+
+Result = collections.namedtuple('Result', [
+    'data',
+    'bldr',
+    ])
+
+Block = collections.namedtuple('Block', [
+    'context',
+    'method',
+    ])
+
+
+class LLVMCompiler (collections.namedtuple('Context', [
+    'datamap',
+    'backend',
+    'bldr',
+    ])):
+
+    """
+    Context is an immutable class used when compiling
+    """
+
+    def __copy__(self):
+        return self._replace(datamap=self.datamap.copy())
+
+    def copy(self):
+        return self.__copy__()
+
+    def update_datamap(self, dictlike):
+        """
+        :returns:
+            a new context with an updated datamap
+        """
+        copy = self.copy()
+        copy.datamap.update(dictlike)
+        return copy
+
+    def with_builder(self, builder):
+        """
+        :returns:
+            a new context with an updated builder
+        """
+        return self._replace(bldr=builder)
+
+    def _create_blocks(self, methods, results=tuple()):
+        """
+        creates a tuples of blocks
+        """
+        bldr = self.bldr
+        method, *rest = methods
+        if rest:
+
+            function = bldr.basic_block.function
+
+            succ = function.append_basic_block('succ.' + str(len(rest)))
+            fail = function.append_basic_block('fail.' + str(len(rest)))
+
+            internal = self.update_datamap(
+                    (name, constant_from_value(val))
+                    for name, val in method.constants.items()
+                    )
+
+            result = internal.compile_program_graph(method.contraint)
+
+            bldr.cbranch(result.data, succ, fail)
+
+            succ_context = self.with_builder(llvmc.Builder.new(succ))
+            fail_context = self.with_builder(llvmc.Builder.new(fail))
+
+            return fail_context._create_blocks(rest,
+                    results + ( Block(succ_context, method), )
+                    )
+        else:
+            return results + ( Block(self, method), )
+
+    @staticmethod
+    def _join_blocks(results):
+        """
+        Joins the results from the blocks
+        """
+        succ_result, *rest = results
+        if rest:
+            fail_result = LLVMCompiler._join_blocks(rest)
+
+            function = succ_result.bldr.basic_block.function
+
+            merge = function.append_basic_block(
+                     'merg.' + str(len(rest)))
+
+            fail_result.bldr.branch(merge)
+            succ_result.bldr.branch(merge)
+
+            bldr = llvmc.Builder.new(merge)
+
+            phi = bldr.phi(succ_result.data.type)
+            phi.add_incoming(fail_result.data, fail_result.bldr.basic_block)
+            phi.add_incoming(succ_result.data, succ_result.bldr.basic_block)
+
+            return Result(phi, bldr)
+        else:
+            return succ_result
+
+    def compile_methods(self, methods):
+        """
+        Compiles an list of methods
+        _"""
+
+        blocks = self._create_blocks(methods)
+        results = [compiler.compile_method(method)
+                    for compiler, method in blocks]
+        return self._join_blocks(results)
+
+    def compile_method(self, method):
+        """
+        Compiles a method
+
+        :param self:
+
+            The self.data **must** at least contain the name of the
+            arguments
+
+        :returns: a return tuple
+        """
+        internal = self.update_datamap(
+                (name, constant_from_value(val))
+                for name, val in method.constants.items()
+                )
+        if method.is_buildin():
+            return internal.compile_buildin_method(method)
+        else:
+            return internal.compile_program_graph(method.target)
+
+    def compile_program_graph(self, basenode):
+        internal = self.copy()
+
+        def reduce_opr(compiler, node):
+            """ reduces the outputs of a compile function """
+            result = compiler.compile_node(node)
+            internal = compiler.copy().with_builder(result.bldr)
+            internal.datamap[node] = result.data
+            return internal
+
+        internal = reduce(reduce_opr,
+                reversed(basenode.nodes_in_order()),
+                self)
+        return Result(internal.datamap[basenode], internal.bldr)
+
+
+    def compile_node(self, node):
+        if not node.sources:
+            try:
+                return Result(self.datamap[node.name], self.bldr)
+            except KeyError:
+                raise RuntimeError('Could not copile node, because {name}'
+                        ' where not computed in {datamap}'.format(
+                            name = node.name, datamap = self.datamap))
+        else:
+            return self.compile_function_call(node)
+
+    def compile_buildin_method(self, method):
+        arg_val = [self.datamap[name] for name in sorted(method.arguments)]
+        return Result(
+                buildin_method(self.bldr, method.target, arg_val),
+                self.bldr
+                )
+
+    def compile_function_call(self, node):
+        internal = self.update_datamap(
+                (name, self.datamap[node])
+                for name, node in node.sources.items()
+                )
+
+        methods = node.methods
+        if not methods:
+            raise RuntimeError('No methods, consider linking')
+        elif len(methods) == 1:
+            # Inline function
+            method, = methods
+            return internal.compile_method(method)
+        else:
+            arg_val = [internal.datamap[node] for name, node in
+                        order_arguments(node.sources)]
+            func = self.backend.function_from_methods(methods)
+            node_data = internal.bldr.call(
+                    func,
+                    arg_val)
+            return Result(node_data, internal.bldr)
 
 class LLVMBackend(object):
     """
     This is the LLVM backend for fbml
     """
 
-    def __init__(self, methods):
+    def __init__(self):
         self.module = llvmc.Module.new('sandbox')
-        self.methods = methods
         self.functions = {}
-
-    def compile_constraint(self, arguments, context):
-        """
-        compiles the constraint of a branch, returns a true block
-        """
-        return llvm_constant('Boolean', True), context.bldr
 
     def build_function(self, name, argument_names, methods):
         """
         Creates a LLVM function from all of these methods. Assumes that the
         methods have the same argument names.
         """
-        arguments = {a: reduce(value.union,
-                    ( method.arguments[a] for method in methods ))
-                    for a in argument_names}
+
+        allowed_args = [method.allowed_arguments(value.union)
+                for method in methods]
+
+        arguments = {a:
+                reduce(value.union,(allowed[a] for allowed in allowed_args))
+                     for a in argument_names}
 
         sorted_args = order_arguments(arguments)
 
         return_values = reduce(value.union,
-                (method.predict_value() for method in methods))
+                (method.predict_return() for method in methods))
 
-        arg_types = [llvm_type_of_value_set(arg) for name, arg in sorted_args]
+        arg_types = [type_of_value(arg) for name, arg in sorted_args]
 
         function = llvmc.Function.new(
             self.module,
             llvmc.Type.function(
-                llvm_type_of_value_set(return_values),
+                type_of_value(return_values),
                 arg_types
                 ),
             name
@@ -118,126 +347,13 @@ class LLVMBackend(object):
             llvm_arg.name = name
             values[name] = llvm_arg
 
-        val, bldr = self.compile_methods(methods, return_values,
-                CompileContext(values, bldr))
-
-        bldr.ret(val)
+        result = LLVMCompiler(values, self, bldr).compile_methods(methods)
+        result.bldr.ret(result.data)
         try:
             function.verify()
         except llvm.LLVMException as exc:
             L.error(eval(str(exc)).decode(encoding='UTF-8'))
         return function
-
-    def compile_methods(self, methods, ret_vals, context):
-        """
-        Compiles methods
-        """
-        #TODO: REFACTOR
-        head, *tail = methods
-        if tail:
-            func = context.bldr.basic_block.function
-
-            true_block = func.append_basic_block('true-' + str(head))
-            false_block = func.append_basic_block('false-' + str(head))
-
-            condition, bldr = self.compile_constraint(head.arguments, context)
-            bldr.cbranch(condition, true_block, false_block)
-
-            true_context = CompileContext(
-                    context.data, llvmc.Builder.new(true_block))
-            true_data, true_bldr = self.compile_method(head, true_context)
-
-            false_context = CompileContext(
-                    context.data, llvmc.Builder.new(false_block))
-            false_data, false_bldr = self.compile_methods(
-                    tail, ret_vals, false_context)
-
-
-            merge_block = func.append_basic_block('merge-' + str(head))
-            true_bldr.branch(merge_block)
-            false_bldr.branch(merge_block)
-
-            print(true_data, false_data)
-            m_bldr = llvmc.Builder.new(merge_block)
-            phi = m_bldr.phi(llvm_type_of_value_set(ret_vals))
-            phi.add_incoming(true_data, true_block)
-            phi.add_incoming(false_data, false_bldr.basic_block)
-            return phi, m_bldr
-        else:
-            return self.compile_method(head, context)
-
-
-    def compile_method(self, method, context):
-        """
-        Compiles a method using a context
-
-        :param context:
-
-            The context.data **must** at least contain the name of the
-            arguments
-
-        :returns: the updated context.
-        """
-        L.debug('Compiles Method: %s %s', method, context)
-        internal = copy_context(context)
-        internal.data.update(
-                (name, self.create_constant_from_values(val))
-                for name, val in method.constants.items()
-                )
-
-        if isinstance(method.target, str):
-            return self.compile_buildin_method(method, internal)
-        else:
-            return self.compile_program_graph(method.target, internal)
-
-    def compile_buildin_method(self, method, context):
-        """
-        Buildin data
-        """
-        arguments = [context.data[name] for name in method.arguments]
-        function = getattr(context.bldr, method.target)
-        return function(*arguments, name=str(method)), context.bldr
-
-    def compile_program_graph(self, node, context):
-        """
-        Compiles a program_graph, uses a node
-        """
-        def reduce_opr(context, node):
-            """ reduces the outputs of a compile function """
-            result, bldr = self.compile_node(node, context)
-            internal = CompileContext(context.data, bldr)
-            internal.data[node] = result
-            return internal
-        internal = reduce(reduce_opr, reversed(node.nodes_in_order()), context)
-        return internal.data[node], internal.bldr
-
-    def compile_node(self, node, context):
-        if not node.sources:
-            return context.data[node.name], context.bldr
-        else:
-            return self.compile_function_call(node, context)
-
-    def compile_function_call(self, node, context):
-        internal = copy_context(context)
-        internal.data.update(
-                (name, context.data[node])
-                for name, node in node.sources.items()
-                )
-        L.debug("Compiles function call %s, %s, %s", node, context, internal.bldr)
-        methods = self.methods[node.name]
-        if len(methods) == 1:
-            # Inline function
-            method, = methods
-            return self.compile_method(method, internal)
-        else:
-            arg_val = [internal.data[node] for name, node in
-                        order_arguments(node.sources)]
-            func = self.function_from_methods(methods)
-            node_data = internal.bldr.call(
-                    func,
-                    arg_val,
-                    name=str(node))
-            return node_data, internal.bldr
 
     def function_from_methods(self, methods):
         """
@@ -251,9 +367,5 @@ class LLVMBackend(object):
             name = first.name
             argument_names = list(first.arguments)
             return self.build_function(name, argument_names, methods)
-
-    def create_constant_from_values(self, consts):
-        val, = consts
-        return llvm_constant(type_of_value_set(consts), val)
 
 

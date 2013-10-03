@@ -2,17 +2,19 @@
 Tests the backend module
 
 """
+import llvm.core as llvmc
 
-from fbml.model import Node, Method
+from nose.tools import nottest, assert_equals
+
+from fbml.model import Node, Method, link
 from fbml.value import INTEGERS, singleton
+from fbml.buildin import METHODS
 
 from fbml import backend
 
-
-
 def test_increment():
     """
-    Test the output of::
+    Single method::
 
         method increment
             a : Z
@@ -21,17 +23,29 @@ def test_increment():
         end c
 
     """
-    node_c = Node('add', {'a': Node('a', {}), 'b': Node('b', {}) })
-    method = Method('increment', {'a': INTEGERS}, {'b': singleton(1)}, node_c)
+    increment_node = Node('add', {
+        'a': Node('a'),
+        'b': Node('c_1')
+        })
 
-    compiler = backend.LLVMBackend(backend.METHODS)
-    print(compiler.build_function(method.name , ['a'], [method]))
-    # assert False
+    interger_condition = Node('Integer', {
+                'number': Node('a')
+                })
 
+    method = Method('increment', ['a'],
+            {'c_1' : 1},
+            interger_condition,
+            increment_node)
+
+    methods = METHODS + (method, )
+    link(methods)
+    back = backend.LLVMBackend()
+    print(back.function_from_methods([method]))
+    #assert False
 
 def test_abs():
     """
-    Test the output of::
+    Two methods with conditions::
 
         method abs
             a < 0, a : Z
@@ -45,95 +59,128 @@ def test_abs():
         end a
 
     """
-    node_b = Node('neg', {'a': Node('a', {}) })
+    node_b = Node('neg', {'a': Node('a') })
     abs_minus = Method('abs',
-            {'a': INTEGERS},
-            {},
+            ('a',),
+            {'c': 0 },
+            Node('lt', {
+                'a': Node('a'),
+                'b': Node('c')}
+                ),
             node_b)
 
-    node_b = Node('a', {})
+    node_b = Node('a')
     abs_plus = Method('abs',
-            {'a': INTEGERS},
-            {},
+            ('a',),
+            {'c': 0 },
+            Node('ge', {
+                'a': Node('a'),
+                'b': Node('c')}
+                ),
             node_b)
 
-
-    compiler = backend.LLVMBackend(backend.METHODS)
-    print(compiler.build_function('abs' , ['a'], [abs_minus, abs_plus]))
-    #assert False
+    methods = METHODS + (abs_minus, abs_plus )
+    link(methods)
+    back = backend.LLVMBackend()
+    print(back.function_from_methods([abs_minus, abs_plus]))
+    # assert False
 
 def test_clamp():
     """
-    Test the output of::
+    Tree methods with multible conditions::
 
         method clamp
-            a <= high, a >= low, a : Z, high : Z, low : Z
+            a <= high, a >= low
         procedure
         end a
 
         method clamp
-            a > high, a : Z, high : Z, low : Z
+            a > high
         procedure
         end high
 
         method clamp
-            a < low, a : Z, high : Z, low : Z
+            a < low
         procedure
         end low
 
     """
+    high, low, node_a = Node('high'), Node('low'), Node('a')
+
     clamp_middle = Method('clamp',
-            {'a': INTEGERS,
-             'high' : INTEGERS,
-             'low'  : INTEGERS },
+            ('a', 'low', 'high'),
             {},
-            Node('a', {})
+            Node('and', {
+                'a': Node('le', { 'a': node_a, 'b': high }),
+                'b': Node('ge', { 'a': node_a, 'b': low })
+            }),
+            Node('a')
             )
+
+    high, low, node_a = Node('high'), Node('low'), Node('a')
     clamp_high = Method('clamp',
-            {'a': INTEGERS,
-             'high' : INTEGERS,
-             'low'  : INTEGERS },
+            ('a', 'low', 'high'),
             {},
-            Node('high', {})
+            Node('lt', { 'a': node_a, 'b': high }),
+            Node('high')
             )
 
+    high, low, node_a = Node('high'), Node('low'), Node('a')
     clamp_low = Method('clamp',
-            {'a': INTEGERS,
-             'high' : INTEGERS,
-             'low'  : INTEGERS },
+            ('a', 'low', 'high'),
             {},
-            Node('low', {}))
+            Node('gt', { 'a': node_a, 'b': low }),
+            Node('low'))
 
-    compiler = backend.LLVMBackend(backend.METHODS)
-    print(compiler.build_function('clamp',
-        ['a', 'high', 'low'],
-        [clamp_middle, clamp_high, clamp_low]))
-    #assert False
+    methods = METHODS + (clamp_middle, clamp_high, clamp_low)
+    link(methods)
+    back = backend.LLVMBackend()
+    func = back.function_from_methods(
+        [clamp_middle, clamp_high, clamp_low])
+    print(func)
 
-FACTORIAL = {
-        'factorial' : [
-            Method('factorial',
-                {'a': singleton(1)}, {},
-                Node('a', {})
-            ),
-            Method('factorial',
-                {'a': INTEGERS}, {'c': singleton(1)},
-                Node('factorial', {
-                    'a': Node('sub', {
-                            'a' : Node('a', {}),
-                            'b' : Node('c', {})
-                        })
-                    })
-                )
-            ]
-        }
+INTERNAL_A = ( Node('a'), Node('a'), Node('a'))
+FACTORIAL = (
+    Method('factorial',
+        ('a', ),
+        {'one': 1},
+        Node('and', {
+            'a' : Node('eq', {
+                'a' : INTERNAL_A[0],
+                'b' : Node('one')
+                }),
+            'b' : Node('Integer', {'value' : INTERNAL_A[0]}),
+            }),
+        Node('a')
+        ),
+    Method('factorial',
+        ('a', ),
+        {'one': 1},
+        Node('and', {
+            'a' : Node('gt', {
+                'a' : INTERNAL_A[1],
+                'b' : Node('one')
+                }),
+            'b' : Node('Integer', {'value' : INTERNAL_A[1]}),
+            }),
+        Node('mul',{
+            'a' : Node('factorial', {
+                'a': Node('sub', {
+                    'a' : INTERNAL_A[2],
+                    'b' : Node('one')
+                    }),
+                }),
+            'b' : INTERNAL_A[2]
+            })
+        ),
+)
 
 def test_factorial():
     """
     Test the output of::
 
         method factorial
-            a : {1}
+            a == 1, a : Z
         procedure
         end a
 
@@ -144,13 +191,11 @@ def test_factorial():
         end b
 
     """
-    methods = backend.METHODS.copy()
-    methods.update(FACTORIAL)
-    compiler = backend.LLVMBackend(methods)
-    print(FACTORIAL['factorial'])
-    print(compiler.build_function('factorial',
-        ['a'], FACTORIAL['factorial']))
-    assert False
+    methods = METHODS + FACTORIAL
+    link(methods)
+    back = backend.LLVMBackend()
+    func = back.function_from_methods(FACTORIAL)
+    print(str(func))
 
 def test_deep_call():
     """
@@ -162,20 +207,17 @@ def test_deep_call():
             b = factorial(a)
         end b
     """
-
-    methods = backend.METHODS.copy()
-    methods.update(FACTORIAL)
-
-    compiler = backend.LLVMBackend(methods)
-    compiler.build_function('factorial_test',
-            ['a'], [
-                Method('factorial_test',
-                    {'a': INTEGERS},
+    method = ( Method('factorial_test', ['a'],
                     {},
-                    Node('factorial', {'a': Node('a', {})})
-                    )
-                ]
-            )
+                    Node('Integer',{'value': Node('a')}),
+                    Node('factorial', {'a': Node('a')})
+                    ), )
+
+    methods = METHODS + FACTORIAL + method
+    link(methods)
+    compiler = backend.LLVMBackend()
+    compiler.function_from_methods(method)
+
     print(compiler.module)
-    #compiler.module.verify()
-    assert False
+    compiler.module.verify()
+
