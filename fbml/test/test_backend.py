@@ -2,12 +2,7 @@
 Tests the backend module
 
 """
-import llvm.core as llvmc
-
-from nose.tools import nottest, assert_equals
-
-from fbml.model import Node, Method, link
-from fbml.value import INTEGERS, singleton
+from fbml.model import node, Method, link
 from fbml.buildin import METHODS
 
 from fbml import backend
@@ -23,13 +18,13 @@ def test_increment():
         end c
 
     """
-    increment_node = Node('add', {
-        'a': Node('a'),
-        'b': Node('c_1')
+    increment_node = node('add', {
+        'a': node('a'),
+        'b': node('c_1')
         })
 
-    interger_condition = Node('Integer', {
-                'number': Node('a')
+    interger_condition = node('Integer', {
+                'number': node('a')
                 })
 
     method = Method('increment', ['a'],
@@ -59,23 +54,23 @@ def test_abs():
         end a
 
     """
-    node_b = Node('neg', {'a': Node('a') })
+    node_b = node('neg', {'a': node('a') })
     abs_minus = Method('abs',
             ('a',),
             {'c': 0 },
-            Node('lt', {
-                'a': Node('a'),
-                'b': Node('c')}
+            node('lt', {
+                'a': node('a'),
+                'b': node('c')}
                 ),
             node_b)
 
-    node_b = Node('a')
+    node_b = node('a')
     abs_plus = Method('abs',
             ('a',),
             {'c': 0 },
-            Node('ge', {
-                'a': Node('a'),
-                'b': Node('c')}
+            node('ge', {
+                'a': node('a'),
+                'b': node('c')}
                 ),
             node_b)
 
@@ -105,32 +100,32 @@ def test_clamp():
         end low
 
     """
-    high, low, node_a = Node('high'), Node('low'), Node('a')
+    high, low, node_a = node('high'), node('low'), node('a')
 
     clamp_middle = Method('clamp',
             ('a', 'low', 'high'),
             {},
-            Node('and', {
-                'a': Node('le', { 'a': node_a, 'b': high }),
-                'b': Node('ge', { 'a': node_a, 'b': low })
+            node('and', {
+                'a': node('le', { 'a': node_a, 'b': high }),
+                'b': node('ge', { 'a': node_a, 'b': low })
             }),
-            Node('a')
+            node('a')
             )
 
-    high, low, node_a = Node('high'), Node('low'), Node('a')
+    high, low, node_a = node('high'), node('low'), node('a')
     clamp_high = Method('clamp',
             ('a', 'low', 'high'),
             {},
-            Node('lt', { 'a': node_a, 'b': high }),
-            Node('high')
+            node('lt', { 'a': node_a, 'b': high }),
+            node('high')
             )
 
-    high, low, node_a = Node('high'), Node('low'), Node('a')
+    high, low, node_a = node('high'), node('low'), node('a')
     clamp_low = Method('clamp',
             ('a', 'low', 'high'),
             {},
-            Node('gt', { 'a': node_a, 'b': low }),
-            Node('low'))
+            node('gt', { 'a': node_a, 'b': low }),
+            node('low'))
 
     methods = METHODS + (clamp_middle, clamp_high, clamp_low)
     link(methods)
@@ -139,35 +134,35 @@ def test_clamp():
         [clamp_middle, clamp_high, clamp_low])
     print(func)
 
-INTERNAL_A = ( Node('a'), Node('a'), Node('a'))
+INTERNAL_A = ( node('a'), node('a'), node('a'))
 FACTORIAL = (
     Method('factorial',
         ('a', ),
         {'one': 1},
-        Node('and', {
-            'a' : Node('eq', {
+        node('and', {
+            'a' : node('eq', {
                 'a' : INTERNAL_A[0],
-                'b' : Node('one')
+                'b' : node('one')
                 }),
-            'b' : Node('Integer', {'value' : INTERNAL_A[0]}),
+            'b' : node('Integer', {'value' : INTERNAL_A[0]}),
             }),
-        Node('a')
+        node('a')
         ),
     Method('factorial',
         ('a', ),
         {'one': 1},
-        Node('and', {
-            'a' : Node('gt', {
+        node('and', {
+            'a' : node('gt', {
                 'a' : INTERNAL_A[1],
-                'b' : Node('one')
+                'b' : node('one')
                 }),
-            'b' : Node('Integer', {'value' : INTERNAL_A[1]}),
+            'b' : node('Integer', {'value' : INTERNAL_A[1]}),
             }),
-        Node('mul',{
-            'a' : Node('factorial', {
-                'a': Node('sub', {
+        node('mul',{
+            'a' : node('factorial', {
+                'a': node('sub', {
                     'a' : INTERNAL_A[2],
-                    'b' : Node('one')
+                    'b' : node('one')
                     }),
                 }),
             'b' : INTERNAL_A[2]
@@ -209,8 +204,8 @@ def test_deep_call():
     """
     method = ( Method('factorial_test', ['a'],
                     {},
-                    Node('Integer',{'value': Node('a')}),
-                    Node('factorial', {'a': Node('a')})
+                    node('Integer',{'value': node('a')}),
+                    node('factorial', {'a': node('a')})
                     ), )
 
     methods = METHODS + FACTORIAL + method

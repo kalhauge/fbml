@@ -7,94 +7,94 @@
 import logging
 L = logging.getLogger(__name__)
 
-from fbml.model import Method, Node
+from fbml.model import Method, node
 
 METHODS = (
     Method('add', ('a', 'b'),
         {},
-        Node('and', {
-            'a': Node('Integer', {'value': Node('a')}),
-            'b': Node('Integer', {'value': Node('b')})
+        node('and', {
+            'a': node('Integer', {'value': node('a')}),
+            'b': node('Integer', {'value': node('b')})
             }),
         'add'
         ),
     Method('sub', ('a', 'b'),
         {},
-        Node('and', {
-            'a': Node('Integer', {'value': Node('a')}),
-            'b': Node('Integer', {'value': Node('b')})
+        node('and', {
+            'a': node('Integer', {'value': node('a')}),
+            'b': node('Integer', {'value': node('b')})
             }),
         'sub'
         ),
     Method('mul', ('a', 'b'),
         {},
-        Node('and', {
-            'a': Node('Integer', {'value': Node('a')}),
-            'b': Node('Integer', {'value': Node('b')})
+        node('and', {
+            'a': node('Integer', {'value': node('a')}),
+            'b': node('Integer', {'value': node('b')})
             }),
         'mul'
         ),
     Method('and', ('a', 'b'),
         {},
-        Node('and', {
-        'a' : Node('Boolean', {'value': Node('a')}),
-        'b' : Node('Boolean', {'value': Node('b')}),
+        node('and', {
+        'a' : node('Boolean', {'value': node('a')}),
+        'b' : node('Boolean', {'value': node('b')}),
             }),
         'and'
         ),
     Method('ge', ('a', 'b'),
         {},
-        Node('and', {
-        'a' : Node('Integer', {'value': Node('a')}),
-        'b' : Node('Integer', {'value': Node('b')}),
+        node('and', {
+        'a' : node('Integer', {'value': node('a')}),
+        'b' : node('Integer', {'value': node('b')}),
             }),
         'ige'
         ),
     Method('lt', ('a', 'b'),
         {},
-        Node('and', {
-            'a' : Node('Integer', {'value': Node('a')}),
-            'b' : Node('Integer', {'value': Node('b')}),
+        node('and', {
+            'a' : node('Integer', {'value': node('a')}),
+            'b' : node('Integer', {'value': node('b')}),
             }),
         'ilt'
         ),
     Method('le', ('a', 'b'),
         {},
-        Node('and', {
-            'a' : Node('Integer', {'value': Node('a')}),
-            'b' : Node('Integer', {'value': Node('b')}),
+        node('and', {
+            'a' : node('Integer', {'value': node('a')}),
+            'b' : node('Integer', {'value': node('b')}),
             }),
         'ile'
         ),
     Method('gt', ('a', 'b'),
         {},
-        Node('and', {
-            'a' : Node('Integer', {'value': Node('a')}),
-            'b' : Node('Integer', {'value': Node('b')}),
+        node('and', {
+            'a' : node('Integer', {'value': node('a')}),
+            'b' : node('Integer', {'value': node('b')}),
             }),
         'igt'
         ),
     Method('eq', ('a', 'b'),
         {},
-        Node('and', {
-            'a' : Node('Integer', {'value': Node('a')}),
-            'b' : Node('Integer', {'value': Node('b')}),
+        node('and', {
+            'a' : node('Integer', {'value': node('a')}),
+            'b' : node('Integer', {'value': node('b')}),
             }),
         'ieq'
         ),
     Method('neg', ('a',),
         {},
-        Node('Integer', {'value': Node('a')}),
+        node('Integer', {'value': node('a')}),
         'neg'
         ),
     Method('Boolean', ('value',),
         {'true': True},
-        Node('true'),
+        node('true'),
         'Boolean'
         ),
     Method('Integer', ('value',),
         {'true': True},
-        Node('true'),
+        node('true'),
         'Integer'
         ),
 )

@@ -4,7 +4,7 @@
 
 """
 from operator import itemgetter
-import collections
+from collections import namedtuple
 
 import logging
 L = logging.getLogger(__name__)
@@ -45,19 +45,10 @@ class Method (object):
         return self.name + '-' + hex(id(self))
 
 
-class Node (object):
+class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
     """
     Node
     """
-    def __init__(self, name, sources=None, methods=None):
-        self.name = name
-        if not sources:
-            sources = {}
-        self.sources = sources.copy()
-        if not methods:
-            methods = tuple()
-        self.methods = tuple(methods)
-
     def calulate_reach(self):
         """
         Calculates reacable nodes
@@ -67,7 +58,7 @@ class Node (object):
 
         while visitors:
             next_vistor = visitors.pop()
-            nodes.add(next_vistor.sources.values())
+            nodes.add(next_vistor.sources)
             visitors.extendleft(next_vistor.sources.values())
 
         return nodes
@@ -81,7 +72,7 @@ class Node (object):
         visitors = collections.deque((self,))
         while visitors:
             next_vistor = visitors.pop()
-            for source in next_vistor.sources.values():
+            for source in next_vistor.sources:
                 node_numbers[source] = node_numbers[next_vistor] + 1
             visitors.extendleft(next_vistor.sources.values())
 
@@ -91,6 +82,30 @@ class Node (object):
     def __repr__(self):
         return self.name + "-" +  str(id(self))
 
+def node(name, sources=tuple(), methods=tuple()):
+    return Node(name, tuple(sources), tuple(methods))
+
+def visit(basenode, function):
+    """
+    A visitor for nodes.
+
+    :param basenode:
+        The basenode is the lowest node in the graph
+
+    :param function:
+        Is the function that for each node returns anything
+        . The function must accept a node, and a
+        dictionary maping the old nodes to new values::
+
+            function :=  Node, ( Node -> ? ) -> ?
+
+    :returns:
+        Whatever the function returns
+    """
+    mapping = {}
+    for node in reversed(basenode.nodes_in_order()):
+        mapping[node] = function(node, mapping)
+    return mapping[basenode]
 
 def link(methods):
     """
@@ -100,20 +115,15 @@ def link(methods):
     for method in methods:
         named_methods.setdefault(method.name, []).append(method)
 
+    def add_methods(old_node, sources):
+        """
+        Add methods to nodes, and returs a new node
+        """
+        new_srcs = tuple(sources[src] for src in old_node.sources)
+        return node(old_node.name, new_srcs, named_methods[old_node.name])
+
     for method in methods:
-        add_methods(method.contraint, named_methods)
+        method.contraint = visit(method.contraint, add_methods)
         if not method.is_buildin():
-            add_methods(method.target, named_methods)
-
-
-def add_methods(basenode, named_methods):
-    """
-    add methods to a porgram graph
-    """
-    nodes = reversed(basenode.nodes_in_order())
-    for node in nodes:
-        if node.sources:
-            node.methods = named_methods[node.name]
-
-
+            method.target = visit(method.target, add_methods)
 
