@@ -93,18 +93,21 @@ def buildin_method(bldr, name, args):
     calls an build in method
     """
     if name in BUILDIN_MAP:
-        func = BUILDIN_MAP[name]
-        if func in INTEGER_CMP:
+        funcname = BUILDIN_MAP[name]
+        if funcname in INTEGER_CMP:
             lhs, rhs = args
             assert args[0].type == args[1].type
-            return bldr.icmp(func, lhs, rhs)
+            return bldr.icmp(funcname, lhs, rhs)
         else:
+            func = getattr(bldr, funcname)
             try:
+                # Buildin methods is either binary or unary
                 lhs, rhs = args
                 assert lhs.type == rhs.type
-            except ValueError: pass
-            return getattr(bldr, BUILDIN_MAP[name])(*args)
-
+                return func(lhs, rhs)
+            except ValueError:
+                arg, = args
+                return func(arg)
     elif name in TYPE_MAP:
         test = args[0].type == TYPE_MAP[name][0]
         ret = constant_from_value(test)
