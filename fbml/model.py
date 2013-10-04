@@ -4,7 +4,7 @@
 
 """
 from operator import itemgetter
-from collections import namedtuple
+from collections import namedtuple, deque
 
 import logging
 L = logging.getLogger(__name__)
@@ -53,13 +53,13 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
         """
         Calculates reacable nodes
         """
-        visitors = collections.deque((self),)
+        visitors = deque((self,))
         nodes = set()
 
         while visitors:
             next_vistor = visitors.pop()
             nodes.add(next_vistor.sources)
-            visitors.extendleft(next_vistor.sources.values())
+            visitors.extendleft(next_vistor.sources)
 
         return nodes
 
@@ -69,12 +69,12 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
         """
         node_numbers = {self : 0}
 
-        visitors = collections.deque((self,))
+        visitors = deque((self,))
         while visitors:
             next_vistor = visitors.pop()
             for source in next_vistor.sources:
                 node_numbers[source] = node_numbers[next_vistor] + 1
-            visitors.extendleft(next_vistor.sources.values())
+            visitors.extendleft(next_vistor.sources)
 
         return [node for node, index in
                     sorted(node_numbers.items(), key=itemgetter(1)) ]
@@ -119,8 +119,12 @@ def link(methods):
         """
         Add methods to nodes, and returs a new node
         """
-        new_srcs = tuple(sources[src] for src in old_node.sources)
-        return node(old_node.name, new_srcs, named_methods[old_node.name])
+        if old_node.sources:
+            return node(old_node.name,
+                    tuple(sources[src] for src in old_node.sources),
+                    named_methods[old_node.name])
+        else:
+            return old_node
 
     for method in methods:
         method.contraint = visit(method.contraint, add_methods)

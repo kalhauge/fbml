@@ -172,9 +172,9 @@ class LLVMCompiler (collections.namedtuple('Context', [
             fail = function.append_basic_block('fail.' + str(len(rest)))
 
             internal = self.update_datamap(
-                    (name, constant_from_value(val))
-                    for name, val in method.constants.items()
-                    )
+                (name, constant_from_value(val))
+                for name, val in method.constants.items()
+                )
 
             result = internal.compile_program_graph(method.contraint)
 
@@ -281,26 +281,22 @@ class LLVMCompiler (collections.namedtuple('Context', [
                 )
 
     def compile_function_call(self, node):
-        internal = self.update_datamap(
-                (name, self.datamap[node])
-                for name, node in node.sources.items()
-                )
-
         methods = node.methods
         if not methods:
             raise RuntimeError('No methods, consider linking')
         elif len(methods) == 1:
             # Inline function
             method, = methods
+            internal = self.update_datamap(
+                (argname, self.datamap[node]) for argname, node in
+                    zip(method.arguments, node.sources)
+                )
             return internal.compile_method(method)
         else:
-            arg_val = [internal.datamap[node] for name, node in
-                        order_arguments(node.sources)]
+            arg_val = [self.datamap[node] for node in node.sources]
             func = self.backend.function_from_methods(methods)
-            node_data = internal.bldr.call(
-                    func,
-                    arg_val)
-            return Result(node_data, internal.bldr)
+            node_data = self.bldr.call(func, arg_val)
+            return Result(node_data, self.bldr)
 
 class LLVMBackend(object):
     """
@@ -320,16 +316,14 @@ class LLVMBackend(object):
         allowed_args = [method.allowed_arguments(value.union)
                 for method in methods]
 
-        arguments = {a:
-                reduce(value.union,(allowed[a] for allowed in allowed_args))
-                     for a in argument_names}
-
-        sorted_args = order_arguments(arguments)
+        arguments = [ reduce(value.union,
+                        (allowed[a] for allowed in allowed_args))
+                     for a in argument_names]
 
         return_values = reduce(value.union,
                 (method.predict_return() for method in methods))
 
-        arg_types = [type_of_value(arg) for name, arg in sorted_args]
+        arg_types = [type_of_value(arg) for arg in arguments]
 
         function = llvmc.Function.new(
             self.module,
@@ -345,8 +339,7 @@ class LLVMBackend(object):
         bldr = llvmc.Builder.new(entry)
 
         values = {}
-        for arg, llvm_arg in zip(sorted_args, function.args):
-            name, _ = arg
+        for name, llvm_arg in zip(argument_names, function.args):
             llvm_arg.name = name
             values[name] = llvm_arg
 

@@ -110,7 +110,6 @@ def test_clamp():
             node('a')
             )
 
-    high, low, node_a = node('high'), node('low'), node('a')
     clamp_high = Method('clamp',
             ('a', 'low', 'high'),
             {},
@@ -118,7 +117,6 @@ def test_clamp():
             node('high')
             )
 
-    high, low, node_a = node('high'), node('low'), node('a')
     clamp_low = Method('clamp',
             ('a', 'low', 'high'),
             {},
@@ -132,39 +130,29 @@ def test_clamp():
         [clamp_middle, clamp_high, clamp_low])
     print(func)
 
-INTERNAL_A = ( node('a'), node('a'), node('a'))
 FACTORIAL = (
     Method('factorial',
         ('a', ),
         {'one': 1},
-        node('and', {
-            'a' : node('eq', {
-                'a' : INTERNAL_A[0],
-                'b' : node('one')
-                }),
-            'b' : node('Integer', {'value' : INTERNAL_A[0]}),
-            }),
+        node('and', [
+            node('eq', [node('a'), node('one')] ),
+            node('Integer', [node('a')] ),
+            ]),
         node('a')
         ),
     Method('factorial',
         ('a', ),
         {'one': 1},
-        node('and', {
-            'a' : node('gt', {
-                'a' : INTERNAL_A[1],
-                'b' : node('one')
-                }),
-            'b' : node('Integer', {'value' : INTERNAL_A[1]}),
-            }),
-        node('mul',{
-            'a' : node('factorial', {
-                'a': node('sub', {
-                    'a' : INTERNAL_A[2],
-                    'b' : node('one')
-                    }),
-                }),
-            'b' : INTERNAL_A[2]
-            })
+        node('and', [
+            node('gt', [node('a'), node('one')]),
+            node('Integer', [node('a')]),
+            ]),
+        node('mul', [
+            node('factorial', [
+                node('sub', [node('a'), node('one')]),
+                ]),
+            node('a')
+            ])
         ),
 )
 
@@ -202,8 +190,8 @@ def test_deep_call():
     """
     method = ( Method('factorial_test', ['a'],
                     {},
-                    node('Integer',{'value': node('a')}),
-                    node('factorial', {'a': node('a')})
+                    node('Integer',[node('a')]),
+                    node('factorial', [node('a')])
                     ), )
 
     methods = METHODS + FACTORIAL + method
