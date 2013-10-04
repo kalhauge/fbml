@@ -18,14 +18,12 @@ def test_increment():
         end c
 
     """
-    increment_node = node('add', {
-        'a': node('a'),
-        'b': node('c_1')
-        })
+    increment_node = node('add',(
+        node('a'),
+        node('c_1')
+        ))
 
-    interger_condition = node('Integer', {
-                'number': node('a')
-                })
+    interger_condition = node('Integer', (node('a'), ) )
 
     method = Method('increment', ['a'],
             {'c_1' : 1},
@@ -54,23 +52,23 @@ def test_abs():
         end a
 
     """
-    node_b = node('neg', {'a': node('a') })
+    node_b = node('neg', (node('a'), ) )
     abs_minus = Method('abs',
             ('a',),
             {'c': 0 },
-            node('lt', {
-                'a': node('a'),
-                'b': node('c')}
-                ),
+            node('lt', (
+                node('a'),
+                node('c')
+                )),
             node_b)
 
     node_b = node('a')
     abs_plus = Method('abs',
             ('a',),
             {'c': 0 },
-            node('ge', {
-                'a': node('a'),
-                'b': node('c')}
+            node('ge', (
+                 node('a'),
+                 node('c'))
                 ),
             node_b)
 
@@ -105,10 +103,10 @@ def test_clamp():
     clamp_middle = Method('clamp',
             ('a', 'low', 'high'),
             {},
-            node('and', {
-                'a': node('le', { 'a': node_a, 'b': high }),
-                'b': node('ge', { 'a': node_a, 'b': low })
-            }),
+            node('and',(
+                node('le', (node_a, high) ),
+                node('ge', (node_a, low) )
+            )),
             node('a')
             )
 
@@ -116,7 +114,7 @@ def test_clamp():
     clamp_high = Method('clamp',
             ('a', 'low', 'high'),
             {},
-            node('lt', { 'a': node_a, 'b': high }),
+            node('lt', (node_a, high)),
             node('high')
             )
 
@@ -124,7 +122,7 @@ def test_clamp():
     clamp_low = Method('clamp',
             ('a', 'low', 'high'),
             {},
-            node('gt', { 'a': node_a, 'b': low }),
+            node('gt', (node_a, low) ),
             node('low'))
 
     methods = METHODS + (clamp_middle, clamp_high, clamp_low)
