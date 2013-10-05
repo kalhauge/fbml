@@ -2,7 +2,8 @@
 Tests the backend module
 
 """
-from fbml.model import node, Method, link
+from fbml.model import node, Method
+from fbml.optimize import link
 from fbml.buildin import METHODS
 
 from fbml import backend
@@ -195,6 +196,33 @@ def test_deep_call():
                     ), )
 
     methods = METHODS + FACTORIAL + method
+    link(methods)
+    compiler = backend.LLVMBackend()
+    compiler.function_from_methods(method)
+
+    print(compiler.module)
+    compiler.module.verify()
+
+def test_real():
+    """
+    Test the output of::
+
+        method real_add
+            a : R, b : R
+        procedure
+            c = a + b
+        end c
+    """
+    method = (
+            Method('real_add', ['a'], {},
+                node('and', [
+                    node('Real', [node('a')]),
+                    node('Real', [node('b')])
+                    ]),
+                node('add', [node('a'), node('b')] )
+                ),
+            )
+    methods = METHODS + method
     link(methods)
     compiler = backend.LLVMBackend()
     compiler.function_from_methods(method)

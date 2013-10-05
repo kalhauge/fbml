@@ -18,33 +18,98 @@ L = logging.getLogger(__name__)
 
 from fbml import value
 
+
+
+BUILDIN_MAP = {
+    'r_add'     : 'fadd',
+    'r_sub'     : 'fsub',
+    'r_mul'     : 'fmul',
+    'r_neg'     : 'fneg',
+    'r_div'     : 'fdiv',
+
+    'r_lt'      : llvmc.FCMP_ULT,
+    'r_gt'      : llvmc.FCMP_UGT,
+    'r_le'      : llvmc.FCMP_ULE,
+    'r_ge'      : llvmc.FCMP_UGE,
+    'r_eq'      : llvmc.FCMP_UEQ,
+
+    'i_add'     : 'add',
+    'i_sub'     : 'sub',
+    'i_mul'     : 'mul',
+    'i_neg'     : 'neg',
+
+    'i_lt'      : llvmc.ICMP_SLT,
+    'i_gt'      : llvmc.ICMP_SGT,
+    'i_le'      : llvmc.ICMP_SLE,
+    'i_ge'      : llvmc.ICMP_SGE,
+    'i_eq'      : llvmc.ICMP_EQ,
+
+    'and'       : 'and_',
+}
+
+REAL_MAP = {
+
+    }
+
+INTEGER_CMP = {
+    llvmc.ICMP_SLT,
+    llvmc.ICMP_SGT,
+    llvmc.ICMP_SLE,
+    llvmc.ICMP_SGE,
+    llvmc.ICMP_EQ,
+    }
+
+REAL_CMP = {
+    llvmc.FCMP_ULT,
+    llvmc.FCMP_UGT,
+    llvmc.FCMP_ULE,
+    llvmc.FCMP_UGE,
+    llvmc.FCMP_UEQ,
+    }
+
+def buildin_method(bldr, name, args):
+    """
+    calls an build in method
+    """
+    if name in BUILDIN_MAP:
+        if name.startswith('i'):
+            assert args[0].type == TYPE_MAP['Integer'][0]
+        elif name.startswith('r'):
+            assert args[0].type == TYPE_MAP['Real'][0]
+        else:
+            pass
+
+        funcname = BUILDIN_MAP[name]
+        try:
+            lhs, rhs = args
+            print(lhs, rhs, args)
+        except ValueError:
+            arg, = args
+            return getattr(bldr, funcname)(arg)
+        else:
+            assert lhs.type == rhs.type
+            if funcname in INTEGER_CMP:
+                return bldr.icmp(funcname, lhs, rhs)
+            elif funcname in REAL_CMP:
+                assert False, 'Real comparation'
+                return bldr.fcmp(funcname, lhs, rhs)
+            else:
+                assert not funcname.startswith('f'), "{}({},{})".format(funcname, lhs, rhs)
+                return getattr(bldr, funcname)(lhs, rhs)
+
+    elif name in TYPE_MAP:
+        test = args[0].type == TYPE_MAP[name][0]
+        ret = constant_from_value(test)
+        return ret
+    else:
+        raise RuntimeError('Not a buildin method')
+
+
 TYPE_MAP = {
     'Integer'  : (llvmc.Type.int(),'int'),
     'Real'     : (llvmc.Type.double(),'real'),
     'Boolean'  : (llvmc.Type.int(1),'int'),
 }
-
-BUILDIN_MAP = {
-    'add'      : 'add',
-    'sub'      : 'sub',
-    'mul'      : 'mul',
-    'and'      : 'and_',
-    'neg'      : 'neg',
-    'ilt'      : llvmc.ICMP_SLT,
-    'igt'      : llvmc.ICMP_SGT,
-    'ile'      : llvmc.ICMP_SLE,
-    'ige'      : llvmc.ICMP_SGE,
-    'ieq'      : llvmc.ICMP_EQ,
-}
-
-INTEGER_CMP = {
-        llvmc.ICMP_SLT,
-        llvmc.ICMP_SGT,
-        llvmc.ICMP_SLE,
-        llvmc.ICMP_SGE,
-        llvmc.ICMP_EQ,
-        }
-
 
 def constant_from_value(val):
     """
@@ -87,33 +152,6 @@ def order_arguments(arguments):
     requires a strict alphabetical order of arguments
     """
     return list(sorted(arguments.items(), key=itemgetter(0)))
-
-def buildin_method(bldr, name, args):
-    """
-    calls an build in method
-    """
-    if name in BUILDIN_MAP:
-        funcname = BUILDIN_MAP[name]
-        if funcname in INTEGER_CMP:
-            lhs, rhs = args
-            assert args[0].type == args[1].type
-            return bldr.icmp(funcname, lhs, rhs)
-        else:
-            func = getattr(bldr, funcname)
-            try:
-                # Buildin methods is either binary or unary
-                lhs, rhs = args
-                assert lhs.type == rhs.type
-                return func(lhs, rhs)
-            except ValueError:
-                arg, = args
-                return func(arg)
-    elif name in TYPE_MAP:
-        test = args[0].type == TYPE_MAP[name][0]
-        ret = constant_from_value(test)
-        return ret
-    else:
-        raise RuntimeError("{name} is not a buildin function".format(name=name))
 
 Result = collections.namedtuple('Result', [
     'data',
@@ -275,6 +313,7 @@ class LLVMCompiler (collections.namedtuple('Context', [
 
     def compile_buildin_method(self, method):
         arg_val = [self.datamap[name] for name in sorted(method.arguments)]
+        print(method, arg_val)
         return Result(
                 buildin_method(self.bldr, method.target, arg_val),
                 self.bldr
