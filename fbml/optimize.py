@@ -56,10 +56,17 @@ def link(methods):
             method.target = visit(method.target, add_methods)
 
 
-def typed(method):
+
+def optimize(method):
     """
-    Removes all wrongly typed methods.
+    Optimizes the fbml graph, by removing unreachable methods from
+    nodes, and inline single methods.
+
+    :param method:
+        the method to optimize.
+
+    :returns: the optimized method.
     """
-    pass
+
 
 

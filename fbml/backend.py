@@ -111,6 +111,11 @@ TYPE_MAP = {
     'Boolean'  : (llvmc.Type.int(1),'int'),
 }
 
+def evaluate_type_of_methods(methods):
+    for method in methods:
+        pass
+
+
 def constant_from_value(val):
     """
     :param val:
