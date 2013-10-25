@@ -5,6 +5,7 @@
 """
 from operator import itemgetter
 from collections import namedtuple, deque
+from pprint import pformat
 
 import logging
 L = logging.getLogger(__name__)
@@ -30,8 +31,7 @@ class Method (object):
         return INTEGERS
 
     def allowed_arguments(self, compare=union):
-        """
-        Aproximating the allowed values
+        """ Aproximating the allowed values
         """
         return { a : INTEGERS for a in self.arguments }
 
@@ -42,8 +42,11 @@ class Method (object):
         return isinstance(self.target, str)
 
     def __repr__(self):
-        return self.name + '-' + hex(id(self))
+        return self.code
 
+    @property
+    def code (self):
+        return self.name + "-" +  hex(id(self))
 
 class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
     """
@@ -80,7 +83,45 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
                     sorted(node_numbers.items(), key=itemgetter(1)) ]
 
     def __repr__(self):
-        return self.name + "-" +  str(id(self))
+        return self.pformat()
+
+    def pformat(self, indent=0):
+        """
+        returns a pretty fromatted str
+        """
+        newline = lambda ind: '\n' + '  '*ind
+
+        def pformat_list(str_list, indent=0, paran = ('[', ']')):
+            str_list = [s for s in str_list if s]
+            if str_list:
+                if len(str_list) == 1:
+                    return paran[0] + str_list[0] + paran[1]
+                else:
+                    return (paran[0] +
+                        newline(indent) +
+                        (',' + newline(indent)).join(str_list) +
+                        newline(indent) +
+                        paran[1])
+            else:
+                return ''
+
+        args = [
+            repr(self.name),
+            pformat_list(
+                [s.pformat(indent+3) for s in self.sources],
+                indent + 2),
+            pformat_list(
+                [m.code for m in self.methods],
+                indent + 2)
+            ]
+
+        return 'node' + pformat_list(args, indent+1, ('(',')'))
+
+
+    @property
+    def code (self):
+        return self.name + "-" +  hex(id(self))
+
 
 def node(name, sources=tuple(), methods=tuple()):
     return Node(name, tuple(sources), tuple(methods))
