@@ -3,6 +3,7 @@
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
 """
+import operator as opr
 
 import logging
 L = logging.getLogger(__name__)
@@ -85,3 +86,30 @@ METHODS = (
     real,
 )
 
+
+PY_MEHTODS =  {
+        i_neg : opr.neg,
+        i_add : opr.add,
+        i_sub : opr.sub,
+        i_mul : opr.mul,
+        i_ge  : opr.ge,
+        i_lt  : opr.lt ,
+        i_le  : opr.le ,
+        i_gt  : opr.gt ,
+        i_eq  : opr.eq ,
+        r_neg : opr.neg,
+        r_add : opr.add,
+        r_sub : opr.sub,
+        r_mul : opr.mul,
+        r_ge  : opr.ge ,
+        r_lt  : opr.lt ,
+        r_le  : opr.le ,
+        r_gt  : opr.gt ,
+        r_eq  : opr.eq ,
+        b_not : opr.not_,
+        b_and : opr.and_,
+
+        boolean : lambda x : isinstance(x, bool),
+        integer : lambda x : isinstance(x, int),
+        real    : lambda x : isinstance(x, float),
+        }
