@@ -3,14 +3,13 @@
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
 """
+from functools import reduce
 from operator import itemgetter
 from collections import namedtuple, deque
 from pprint import pformat
 
 import logging
 L = logging.getLogger(__name__)
-
-from fbml.value import INTEGERS, union
 
 class Method (object):
     """
@@ -24,17 +23,38 @@ class Method (object):
         self.contraint = contraint
         self.target = target
 
-    def predict_return(self, compare=union):
+    def evaluate(self, args, valueset):
         """
-        predicts the return value
+        predicts the return value using the valueset
         """
-        return INTEGERS
+        allowed_values = self.allowed_subset(args, valueset)
 
-    def allowed_arguments(self, compare=union):
-        """ Aproximating the allowed values
-        """
-        return { a : INTEGERS for a in self.arguments }
+        if self.is_buildin:
+            return valueset.apply(self, allowed_values)
+        else:
+            initial = {i : valueset.const(v) for i, v in self.constants.items()}
+            initial.update(zip(self.arguments, allowed_values))
 
+            def evaluate_node(internal_node, sources):
+                """
+                evaluates a single node
+                """
+                if sources:
+                    values = [m.evaluate(sources)
+                            for m in internal_node.methods]
+                    return reduce(valueset.union, values)
+                else:
+                    return initial[internal_node.name]
+
+            return self.target.visit(evaluate_node)
+
+    def allowed_subset(self, args, valueset):
+        """
+        Returns the allowed subset of the args.
+        """
+        return args
+
+    @property
     def is_buildin(self):
         """
         checks if the method is buildin
@@ -46,6 +66,9 @@ class Method (object):
 
     @property
     def code (self):
+        """
+        Returns the code of the method
+        """
         return self.name + "-" +  hex(id(self))
 
 class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
@@ -81,6 +104,29 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
 
         return [node for node, index in
                     sorted(node_numbers.items(), key=itemgetter(1)) ]
+
+    def visit(self, function):
+        """
+        A visitor for nodes.
+
+        :param basenode:
+            The basenode is the lowest node in the graph
+
+        :param function:
+            Is the function that for each node returns anything
+            . The function must accept a node, and a
+            dictionary maping the old nodes to new values::
+
+                function :=  Node x ?**k -> ?
+
+        :returns:
+            Whatever the function returns
+        """
+        mapping = {}
+        for node in reversed(self.nodes_in_order()):
+            sources = tuple(mapping[s] for s in node.sources)
+            mapping[node] = function(node, sources)
+        return mapping[self]
 
     def __repr__(self):
         return self.pformat()

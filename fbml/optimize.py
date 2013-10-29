@@ -9,33 +9,12 @@ L = logging.getLogger(__name__)
 
 from fbml import model
 
-def visit(basenode, function):
-    """
-    A visitor for nodes.
-
-    :param basenode:
-        The basenode is the lowest node in the graph
-
-    :param function:
-        Is the function that for each node returns anything
-        . The function must accept a node, and a
-        dictionary maping the old nodes to new values::
-
-            function :=  Node, ( Node -> ? ) -> ?
-
-    :returns:
-        Whatever the function returns
-    """
-    mapping = {}
-    for node in reversed(basenode.nodes_in_order()):
-        mapping[node] = function(node, mapping)
-    return mapping[basenode]
-
 def link(methods):
     """
     Links the nodes to the methods
     """
     named_methods = {}
+    # Created the method table
     for method in methods:
         named_methods.setdefault(method.name, []).append(method)
 
@@ -43,30 +22,55 @@ def link(methods):
         """
         Add methods to nodes, and returs a new node
         """
-        if old_node.sources:
+        if sources:
             return model.node(old_node.name,
-                    tuple(sources[src] for src in old_node.sources),
-                    named_methods[old_node.name])
+                    sources, named_methods[old_node.name])
         else:
             return old_node
 
     for method in methods:
-        method.contraint = visit(method.contraint, add_methods)
+        method.contraint = method.contraint.visit(add_methods)
         if not method.is_buildin():
-            method.target = visit(method.target, add_methods)
+            method.target = method.target.visit(add_methods)
 
 
+class MethodNotValid(Exception):
+    """ Method is not valid """
 
-def optimize(method):
-    """
-    Optimizes the fbml graph, by removing unreachable methods from
-    nodes, and inline single methods.
-
-    :param method:
-        the method to optimize.
-
-    :returns: the optimized method.
-    """
-
-
-
+#def verify(method, valueset):
+#    """
+#    Verifies a fbml method, and esures that errors are imposible.
+#    The method is in all simplicity executed with the valueset.
+#
+#    :param valueset:
+#        This is a namedtuple containing a::
+#            union  -> ( S x S ) -> S
+#            subset -> ( S x S ) -> {true,false}
+#            max    -> S
+#            min    -> S
+#            const  -> Value -> S
+#            apply  -> ( Method x S**?) -> S
+#
+#    :raises:
+#        A MethodNotVailid
+#    """
+#
+#    arg_set = predict_argsets()
+#
+#    return False
+#
+#
+#def optimize(method):
+#    """
+#    Optimizes the fbml graph, by removing unreachable methods from
+#    nodes, and inline single methods.
+#
+#    :param method:
+#        the method to optimize.
+#
+#    :returns: the optimized method.
+#    """
+#
+#    return method
+#
+#

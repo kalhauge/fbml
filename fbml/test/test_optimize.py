@@ -7,6 +7,7 @@
 
 from fbml.model import Method, node
 from fbml import optimize
+from fbml.buildin import METHODS
 
 
 def test_taxes():
@@ -14,7 +15,7 @@ def test_taxes():
     This example test the taxes example
     """
 
-    tax = {
+    tax = (
         Method('tax', ['income'],
             {'x1' : 300000.0, 'x3' : 0.40},
             node('le', [node('income'), node('x1')]),
@@ -34,10 +35,11 @@ def test_taxes():
                 node('tax', [node('x1')]),
                 ])
             )
-        }
+        )
 
-    optimize.link(tax)
+    optimize.link(METHODS + tax)
 
-    print(tax)
+    print(tax[1].target)
+    assert optimize.verify(tax[1])
 
 

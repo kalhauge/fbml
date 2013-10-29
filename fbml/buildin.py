@@ -21,6 +21,8 @@ BINARY_REAL = node('and', [
 
 UNARY_INTEGER = node('Integer', [node('value')])
 
+UNARY_BOOLEAN = node('Boolean', [node('value')])
+
 UNARY_REAL    = node('Real',    [node('value')])
 
 BINARY_BOOLEAN = node('and', [
@@ -28,35 +30,58 @@ BINARY_BOOLEAN = node('and', [
             node('Boolean', [node('b')])
             ])
 
+i_neg = Method('neg', ('a',),     {}, UNARY_INTEGER,  'i_neg'),
+
+i_add = Method('add', ('a', 'b'), {}, BINARY_INTEGER, 'i_add'),
+i_sub = Method('sub', ('a', 'b'), {}, BINARY_INTEGER, 'i_sub'),
+i_mul = Method('mul', ('a', 'b'), {}, BINARY_INTEGER, 'i_mul'),
+i_ge  = Method('ge',  ('a', 'b'), {}, BINARY_INTEGER, 'i_ge'),
+i_lt  = Method('lt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_lt'),
+i_le  = Method('le',  ('a', 'b'), {}, BINARY_INTEGER, 'i_le'),
+i_gt  = Method('gt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_gt'),
+i_eq  = Method('eq',  ('a', 'b'), {}, BINARY_INTEGER, 'i_eq'),
+
+r_neg = Method('neg', ('a',),     {}, UNARY_REAL,     'r_neg'),
+
+r_add = Method('add', ('a', 'b'), {}, BINARY_REAL,    'r_add'),
+r_sub = Method('sub', ('a', 'b'), {}, BINARY_REAL,    'r_sub'),
+r_mul = Method('mul', ('a', 'b'), {}, BINARY_REAL,    'r_mul'),
+r_ge  = Method('ge',  ('a', 'b'), {}, BINARY_REAL,    'r_ge'),
+r_lt  = Method('lt',  ('a', 'b'), {}, BINARY_REAL,    'r_lt'),
+r_le  = Method('le',  ('a', 'b'), {}, BINARY_REAL,    'r_le'),
+r_gt  = Method('gt',  ('a', 'b'), {}, BINARY_REAL,    'r_gt'),
+r_eq  = Method('eq',  ('a', 'b'), {}, BINARY_REAL,    'r_eq'),
+
+b_not = Method('not', ('a',),     {}, UNARY_BOOLEAN,  'b_not'),
+b_and = Method('and', ('a', 'b'), {}, BINARY_BOOLEAN, 'b_and'),
+
+boolean = Method('Boolean', ('value',), {'true': True}, node('true'), 'boolean'),
+integer = Method('Integer', ('value',), {'true': True}, node('true'), 'integer'),
+real    = Method('Real',    ('value',), {'true': True}, node('true'), 'real'),
+
 METHODS = (
-    Method('neg', ('a',),     {}, UNARY_INTEGER,  'i_neg'),
-
-    Method('add', ('a', 'b'), {}, BINARY_INTEGER, 'i_add'),
-    Method('sub', ('a', 'b'), {}, BINARY_INTEGER, 'i_sub'),
-    Method('mul', ('a', 'b'), {}, BINARY_INTEGER, 'i_mul'),
-    Method('ge',  ('a', 'b'), {}, BINARY_INTEGER, 'i_ge'),
-    Method('lt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_lt'),
-    Method('le',  ('a', 'b'), {}, BINARY_INTEGER, 'i_le'),
-    Method('gt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_gt'),
-    Method('eq',  ('a', 'b'), {}, BINARY_INTEGER, 'i_eq'),
-
-    Method('neg', ('a',),     {}, UNARY_REAL,  'r_neg'),
-
-    Method('add', ('a', 'b'), {}, BINARY_REAL,    'r_add'),
-    Method('sub', ('a', 'b'), {}, BINARY_REAL,    'r_sub'),
-    Method('mul', ('a', 'b'), {}, BINARY_REAL,    'r_mul'),
-    Method('ge',  ('a', 'b'), {}, BINARY_REAL,    'r_ge'),
-    Method('lt',  ('a', 'b'), {}, BINARY_REAL,    'r_lt'),
-    Method('le',  ('a', 'b'), {}, BINARY_REAL,    'r_le'),
-    Method('gt',  ('a', 'b'), {}, BINARY_REAL,    'r_gt'),
-    Method('eq',  ('a', 'b'), {}, BINARY_REAL,    'r_eq'),
-
-    Method('neg', ('a',),     {}, UNARY_INTEGER,  'neg'),
-
-    Method('and', ('a', 'b'), {}, BINARY_BOOLEAN, 'and'),
-
-    Method('Boolean', ('value',), {'true': True}, node('true'), 'Boolean'),
-    Method('Integer', ('value',), {'true': True}, node('true'), 'Integer'),
-    Method('Real',    ('value',), {'true': True}, node('true'), 'Real'),
+    i_neg,
+    i_add,
+    i_sub,
+    i_mul,
+    i_ge ,
+    i_lt ,
+    i_le ,
+    i_gt ,
+    i_eq ,
+    r_neg,
+    r_add,
+    r_sub,
+    r_mul,
+    r_ge ,
+    r_lt ,
+    r_le ,
+    r_gt ,
+    r_eq ,
+    b_not,
+    b_and,
+    boolean,
+    integer,
+    real,
 )
 
