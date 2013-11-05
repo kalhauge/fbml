@@ -8,6 +8,29 @@
 from fbml.model import Method, node
 from fbml import optimize
 from fbml.buildin import METHODS
+from fbml.valueset import FiniteSet
+
+
+
+def test_multiply():
+    """
+    this example test a simple mulitply
+    """
+
+    mult = (
+        Method('multi', ['number'],
+            {'x1': 10},
+            node('le', [node('number'), node('x1')]),
+            node('mul',[node('x1'), node('number')])
+            ),
+        )
+
+    optimize.link(METHODS + mult)
+
+    value = mult[-1].evaluate((FiniteSet({2, 3}),), FiniteSet)
+    print(value)
+
+    assert value == FiniteSet({20, 30})
 
 
 def test_taxes():
@@ -34,12 +57,20 @@ def test_taxes():
                     ]),
                 node('tax', [node('x1')]),
                 ])
+            ),
+        Method('main', ['income'],
+            {},
+            node('Real', [node('income')]),
+            node('tax', [node('income')])
             )
         )
 
     optimize.link(METHODS + tax)
 
-    print(tax[1].target)
-    assert optimize.verify(tax[1])
+    value = tax[-1].evaluate((FiniteSet({10000.0}),), FiniteSet)
+    print(value)
+
+    assert value == FiniteSet({4000.0})
+
 
 

@@ -6,11 +6,12 @@ The valueset is the used to execute and verify the models.
 """
 
 from collections.abc import abstractmethod, Set
-from buildin import PY_MEHTODS
 import itertools
 
 import logging
 L = logging.getLogger(__name__)
+
+from fbml.buildin import PY_MEHTODS
 
 class ValueSet (object):
     """
@@ -64,11 +65,12 @@ class ValueSet (object):
         """
         return cls(value)
 
-class Finiteset(ValueSet, Set):
+class FiniteSet(ValueSet, Set):
     """
     Finite set is the simplest implementation of ValueSet, but
     is at most situations hopelessly ineffective
     """
+
 
     def __init__(self, start_set):
         self.inner_set = frozenset(start_set)
@@ -88,11 +90,9 @@ class Finiteset(ValueSet, Set):
 
     @classmethod
     def apply(cls, method, args_sets):
-        results = set()
-        for args in itertools.product(*args_sets):
-            results.add(PY_MEHTODS[method](*args))
-
-        return cls(results)
+        L.debug("%s buildin %s %s", method, PY_MEHTODS[method], args_sets)
+        return cls(itertools.starmap(
+            PY_MEHTODS[method], itertools.product(*args_sets)))
 
 
     def __iter__(self):
@@ -104,5 +104,10 @@ class Finiteset(ValueSet, Set):
     def __contains__(self, elm):
         return elm in self.inner_set
 
+    def __repr__(self):
+        return repr(set(self.inner_set))
+
+
+FiniteSet.min = FiniteSet({})
 
 

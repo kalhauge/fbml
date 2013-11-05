@@ -29,10 +29,9 @@ def link(methods):
             return old_node
 
     for method in methods:
-        method.contraint = method.contraint.visit(add_methods)
-        if not method.is_buildin():
+        if not method.is_buildin:
+            method.contraint = method.contraint.visit(add_methods)
             method.target = method.target.visit(add_methods)
-
 
 class MethodNotValid(Exception):
     """ Method is not valid """

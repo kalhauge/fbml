@@ -4,61 +4,63 @@
 
 """
 import operator as opr
-
+import numbers
 import logging
 L = logging.getLogger(__name__)
 
 from fbml.model import Method, node
 
-BINARY_INTEGER = node('and', [
-            node('Integer', [node('a')]),
-            node('Integer', [node('b')])
-            ])
+boolean = Method('Boolean', ('value',), {'true': True}, node('true'), 'boolean')
+integer = Method('Integer', ('value',), {'true': True}, node('true'), 'integer')
+real    = Method('Real',    ('value',), {'true': True}, node('true'), 'real')
 
-BINARY_REAL = node('and', [
-            node('Real', [node('a')]),
-            node('Real', [node('b')])
-            ])
 
-UNARY_INTEGER = node('Integer', [node('value')])
-
-UNARY_BOOLEAN = node('Boolean', [node('value')])
-
-UNARY_REAL    = node('Real',    [node('value')])
-
+UNARY_BOOLEAN = node('Boolean', [node('value')], [boolean])
 BINARY_BOOLEAN = node('and', [
-            node('Boolean', [node('a')]),
-            node('Boolean', [node('b')])
-            ])
+            node('Boolean', [node('a')],[boolean]),
+            node('Boolean', [node('b')],[boolean])
+            ], [b_and])
 
-i_neg = Method('neg', ('a',),     {}, UNARY_INTEGER,  'i_neg'),
+b_not = Method('not', ('a',),     {}, UNARY_BOOLEAN,  'b_not')
+b_and = Method('and', ('a', 'b'), {}, BINARY_BOOLEAN, 'b_and')
 
-i_add = Method('add', ('a', 'b'), {}, BINARY_INTEGER, 'i_add'),
-i_sub = Method('sub', ('a', 'b'), {}, BINARY_INTEGER, 'i_sub'),
-i_mul = Method('mul', ('a', 'b'), {}, BINARY_INTEGER, 'i_mul'),
-i_ge  = Method('ge',  ('a', 'b'), {}, BINARY_INTEGER, 'i_ge'),
-i_lt  = Method('lt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_lt'),
-i_le  = Method('le',  ('a', 'b'), {}, BINARY_INTEGER, 'i_le'),
-i_gt  = Method('gt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_gt'),
-i_eq  = Method('eq',  ('a', 'b'), {}, BINARY_INTEGER, 'i_eq'),
+UNARY_INTEGER = node('Integer', [node('value')], [integer])
+BINARY_INTEGER = node('and', [
+            node('Integer', [node('a')], [integer]),
+            node('Integer', [node('b')], [integer])
+            ], [b_and])
 
-r_neg = Method('neg', ('a',),     {}, UNARY_REAL,     'r_neg'),
+UNARY_REAL    = node('Real',    [node('value')], [real])
+BINARY_REAL = node('and', [
+            node('Real', [node('a')], [real]),
+            node('Real', [node('b')], [real])
+            ], [b_and] )
 
-r_add = Method('add', ('a', 'b'), {}, BINARY_REAL,    'r_add'),
-r_sub = Method('sub', ('a', 'b'), {}, BINARY_REAL,    'r_sub'),
-r_mul = Method('mul', ('a', 'b'), {}, BINARY_REAL,    'r_mul'),
-r_ge  = Method('ge',  ('a', 'b'), {}, BINARY_REAL,    'r_ge'),
-r_lt  = Method('lt',  ('a', 'b'), {}, BINARY_REAL,    'r_lt'),
-r_le  = Method('le',  ('a', 'b'), {}, BINARY_REAL,    'r_le'),
-r_gt  = Method('gt',  ('a', 'b'), {}, BINARY_REAL,    'r_gt'),
-r_eq  = Method('eq',  ('a', 'b'), {}, BINARY_REAL,    'r_eq'),
 
-b_not = Method('not', ('a',),     {}, UNARY_BOOLEAN,  'b_not'),
-b_and = Method('and', ('a', 'b'), {}, BINARY_BOOLEAN, 'b_and'),
+i_neg = Method('neg', ('a',),     {}, UNARY_INTEGER,  'i_neg')
 
-boolean = Method('Boolean', ('value',), {'true': True}, node('true'), 'boolean'),
-integer = Method('Integer', ('value',), {'true': True}, node('true'), 'integer'),
-real    = Method('Real',    ('value',), {'true': True}, node('true'), 'real'),
+i_add = Method('add', ('a', 'b'), {}, BINARY_INTEGER, 'i_add')
+i_sub = Method('sub', ('a', 'b'), {}, BINARY_INTEGER, 'i_sub')
+i_mul = Method('mul', ('a', 'b'), {}, BINARY_INTEGER, 'i_mul')
+i_ge  = Method('ge',  ('a', 'b'), {}, BINARY_INTEGER, 'i_ge')
+i_lt  = Method('lt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_lt')
+i_le  = Method('le',  ('a', 'b'), {}, BINARY_INTEGER, 'i_le')
+i_gt  = Method('gt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_gt')
+i_eq  = Method('eq',  ('a', 'b'), {}, BINARY_INTEGER, 'i_eq')
+
+r_neg = Method('neg', ('a',),     {}, UNARY_REAL,     'r_neg')
+
+r_add = Method('add', ('a', 'b'), {}, BINARY_REAL,    'r_add')
+r_sub = Method('sub', ('a', 'b'), {}, BINARY_REAL,    'r_sub')
+r_mul = Method('mul', ('a', 'b'), {}, BINARY_REAL,    'r_mul')
+r_ge  = Method('ge',  ('a', 'b'), {}, BINARY_REAL,    'r_ge')
+r_lt  = Method('lt',  ('a', 'b'), {}, BINARY_REAL,    'r_lt')
+r_le  = Method('le',  ('a', 'b'), {}, BINARY_REAL,    'r_le')
+r_gt  = Method('gt',  ('a', 'b'), {}, BINARY_REAL,    'r_gt')
+r_eq  = Method('eq',  ('a', 'b'), {}, BINARY_REAL,    'r_eq')
+
+
+
 
 METHODS = (
     i_neg,
@@ -110,6 +112,6 @@ PY_MEHTODS =  {
         b_and : opr.and_,
 
         boolean : lambda x : isinstance(x, bool),
-        integer : lambda x : isinstance(x, int),
+        integer : lambda x : x.__class__ == int,
         real    : lambda x : isinstance(x, float),
         }

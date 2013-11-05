@@ -6,15 +6,33 @@
 from functools import reduce
 from operator import itemgetter
 from collections import namedtuple, deque
+from collections.abc import abstractmethod
 from pprint import pformat
 
 import logging
 L = logging.getLogger(__name__)
 
-class Method (object):
+class AbstactMethod (object):
+
+    """
+    An AbstractMethod
+    """
+
+    @abstractmethod
+    def evaluate(self, args, valueset):
+        """ Evaluates the method using the args """
+
+    @abstractmethod
+    def initial_values(self, args, valueset):
+        """ Returst the dict pointing to the initial_values """
+
+
+class Method (AbstactMethod):
     """
      Method
      """
+
+    is_buildin = False
 
     def __init__(self, name, arguments, constants, contraint, target):
         self.name = name
@@ -27,39 +45,37 @@ class Method (object):
         """
         predicts the return value using the valueset
         """
-        allowed_values = self.allowed_subset(args, valueset)
+        L.debug("evaluating %s%s", self, args)
 
-        if self.is_buildin:
-            return valueset.apply(self, allowed_values)
+        if self.allow(args, valueset):
+            initial = self.initial_values(args, valueset)
+            L.debug("%s inital values: %s", self, initial)
+            value =  self.target.evaluate(initial, valueset)
+            L.debug('%s returns : %s',self, value)
+            return value
         else:
-            initial = {i : valueset.const(v) for i, v in self.constants.items()}
-            initial.update(zip(self.arguments, allowed_values))
+            return valueset.min
 
-            def evaluate_node(internal_node, sources):
-                """
-                evaluates a single node
-                """
-                if sources:
-                    values = [m.evaluate(sources)
-                            for m in internal_node.methods]
-                    return reduce(valueset.union, values)
-                else:
-                    return initial[internal_node.name]
+    def allow(self, argset, valueset):
+        """
+        Returns if the args is a  allowed subset.
 
-            return self.target.visit(evaluate_node)
+        This is under apporximation
+        """
+        initial = self.initial_values(argset, valueset)
+        result = self.contraint.evaluate(initial, valueset)
+        truth = True in result and not False in result
+        L.debug('%s is allowed' if truth else '%s is not allowed', self)
+        return truth
 
-    def allowed_subset(self, args, valueset):
+    def initial_values(self, argset, valueset):
         """
-        Returns the allowed subset of the args.
+        :returns: the intial values of a execution using
+        the argset
         """
-        return args
-
-    @property
-    def is_buildin(self):
-        """
-        checks if the method is buildin
-        """
-        return isinstance(self.target, str)
+        initial = {i : valueset.const(v) for i, v in self.constants.items()}
+        initial.update(zip(self.arguments, argset))
+        return initial
 
     def __repr__(self):
         return self.code
@@ -70,6 +86,26 @@ class Method (object):
         Returns the code of the method
         """
         return self.name + "-" +  hex(id(self))
+
+class BuildInMethod(AbstactMethod):
+
+    """
+    BuildInMethod
+
+    """
+
+    is_buildin = True
+
+    def __init__(self, name, arguments, code):
+        self.name = name
+        self.arguments = arguments
+        self.code = code
+
+    def evaluate(self, argsset, valueset):
+        return valueset.apply(self, argsset)
+
+    def initial_values(self, argset, valueset):
+        return dict(zip(self.arguments, argset))
 
 class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
     """
@@ -127,6 +163,22 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
             sources = tuple(mapping[s] for s in node.sources)
             mapping[node] = function(node, sources)
         return mapping[self]
+
+    def evaluate(self, initial, valueset):
+        """ Evaluate helper function """
+
+        L.debug('%s %s', self.code, self.methods)
+
+        def evaluate_node(internal_node, sources):
+            """ evaluates a single node """
+            if sources:
+                values = [m.evaluate(sources, valueset)
+                        for m in internal_node.methods]
+                return reduce(valueset.union, values, valueset.min)
+            else:
+                return initial[internal_node.name]
+
+        return self.visit(evaluate_node)
 
     def __repr__(self):
         return self.pformat()
