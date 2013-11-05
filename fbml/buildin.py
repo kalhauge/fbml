@@ -37,27 +37,27 @@ BINARY_REAL = node('and', [
             ], [b_and] )
 
 
-i_neg = Method('neg', ('a',),     {}, UNARY_INTEGER,  'i_neg')
+i_neg = Method('neg', ('a',),     'i_neg')
 
-i_add = Method('add', ('a', 'b'), {}, BINARY_INTEGER, 'i_add')
-i_sub = Method('sub', ('a', 'b'), {}, BINARY_INTEGER, 'i_sub')
-i_mul = Method('mul', ('a', 'b'), {}, BINARY_INTEGER, 'i_mul')
-i_ge  = Method('ge',  ('a', 'b'), {}, BINARY_INTEGER, 'i_ge')
-i_lt  = Method('lt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_lt')
-i_le  = Method('le',  ('a', 'b'), {}, BINARY_INTEGER, 'i_le')
-i_gt  = Method('gt',  ('a', 'b'), {}, BINARY_INTEGER, 'i_gt')
-i_eq  = Method('eq',  ('a', 'b'), {}, BINARY_INTEGER, 'i_eq')
+i_add = Method('add', ('a', 'b'), 'i_add')
+i_sub = Method('sub', ('a', 'b'), 'i_sub')
+i_mul = Method('mul', ('a', 'b'), 'i_mul')
+i_ge  = Method('ge',  ('a', 'b'), 'i_ge')
+i_lt  = Method('lt',  ('a', 'b'), 'i_lt')
+i_le  = Method('le',  ('a', 'b'), 'i_le')
+i_gt  = Method('gt',  ('a', 'b'), 'i_gt')
+i_eq  = Method('eq',  ('a', 'b'), 'i_eq')
 
-r_neg = Method('neg', ('a',),     {}, UNARY_REAL,     'r_neg')
+r_neg = Method('neg', ('a',),     'r_neg')
 
-r_add = Method('add', ('a', 'b'), {}, BINARY_REAL,    'r_add')
-r_sub = Method('sub', ('a', 'b'), {}, BINARY_REAL,    'r_sub')
-r_mul = Method('mul', ('a', 'b'), {}, BINARY_REAL,    'r_mul')
-r_ge  = Method('ge',  ('a', 'b'), {}, BINARY_REAL,    'r_ge')
-r_lt  = Method('lt',  ('a', 'b'), {}, BINARY_REAL,    'r_lt')
-r_le  = Method('le',  ('a', 'b'), {}, BINARY_REAL,    'r_le')
-r_gt  = Method('gt',  ('a', 'b'), {}, BINARY_REAL,    'r_gt')
-r_eq  = Method('eq',  ('a', 'b'), {}, BINARY_REAL,    'r_eq')
+r_add = Method('add', ('a', 'b'), 'r_add')
+r_sub = Method('sub', ('a', 'b'), 'r_sub')
+r_mul = Method('mul', ('a', 'b'), 'r_mul')
+r_ge  = Method('ge',  ('a', 'b'), 'r_ge')
+r_lt  = Method('lt',  ('a', 'b'), 'r_lt')
+r_le  = Method('le',  ('a', 'b'), 'r_le')
+r_gt  = Method('gt',  ('a', 'b'), 'r_gt')
+r_eq  = Method('eq',  ('a', 'b'), 'r_eq')
 
 
 
