@@ -82,4 +82,23 @@ def test_taxes_finite_set():
     value = analyse(TAX[-1], (300100.0, ), FiniteSet)
     assert value == FiniteSet.const(120060.0), str(value)
 
+def test_taxes_type_set():
+    """
+    This example test the taxes example
+
+    tax {
+        (income) income > 300000 ->
+            above = income - 300000,
+            below = 300000,
+            above * 0.60 + tax below.
+        (income) income <= 300000 ->
+            income * 0.40.
+    }
+    """
+    optimize.link(METHODS + TAX)
+    value = analyse(TAX[-1], (300100.0, ), TypeSet)
+    assert False
+    assert value == TypeSet({'Real'}), str(value)
+
+
 

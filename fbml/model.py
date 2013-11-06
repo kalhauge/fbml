@@ -44,21 +44,29 @@ class Method (AbstactMethod):
         self.constants = constants
         self.contraint = contraint
         self.target = target
+        self.dynammic = {}
 
     def evaluate(self, args, valueset):
         """
         predicts the return value using the valueset
         """
         L.debug("evaluating %s%s", self, args)
-
-        if self.allow(args, valueset):
-            initial = self.initial_values(args, valueset)
-            L.debug("%s inital values: %s", self, initial)
-            value =  self.target.evaluate(initial, valueset)
-            L.debug('%s returns : %s', self, value)
-            return value
+        if not args in self.dynammic:
+            L.debug('not found in %s', self.dynammic)
+            self.dynammic[args] = None
+            retval = valueset.extremum
+            while retval != self.dynammic[args]:
+                self.dynammic[args] = retval
+                if self.allow(args, valueset):
+                    initial = self.initial_values(args, valueset)
+                    L.debug("%s inital values: %s", self, initial)
+                    retval = self.target.evaluate(initial, valueset)
+                else:
+                    retval = valueset.extremum
         else:
-            return valueset.extremum
+            retval = self.dynammic[args]
+        L.debug('%s returns : %s', self, retval)
+        return retval
 
     def allow(self, argset, valueset):
         """

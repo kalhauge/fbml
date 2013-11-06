@@ -15,7 +15,7 @@ L = logging.getLogger(__name__)
 
 def analyse(method, arguments, valueset):
     """ Short analysis tool """
-    return method.evaluate([valueset.const(arg) for arg in arguments], valueset)
+    return method.evaluate(tuple(valueset.const(arg) for arg in arguments), valueset)
 
 class ValueSet (object):
     """ ValueSet
@@ -145,12 +145,12 @@ def all_bool_bool(args):
     else:
         return TypeSet.extremum
 
-class TypeSet (ValueSet, frozenset):
+class TypeSet (frozenset, ValueSet):
     """
     A :class:`TypeSet` is used to evaluate the type of
     a method or function.
 
-    The TypeSet annalysis is a over apporximation
+    The TypeSet annalysis is a under apporximation
     """
 
     consts = {
@@ -169,30 +169,35 @@ class TypeSet (ValueSet, frozenset):
         'i_le'  : binnary_int_bool,
         'i_gt'  : binnary_int_bool,
         'i_eq'  : binnary_int_bool,
-        'r_neg' : all_int_int,
-        'r_add' : all_int_int,
-        'r_sub' : all_int_int,
-        'r_mul' : all_int_int,
-        'r_ge'  : binnary_int_bool,
-        'r_lt'  : binnary_int_bool,
-        'r_le'  : binnary_int_bool,
-        'r_gt'  : binnary_int_bool,
-        'r_eq'  : binnary_int_bool,
+        'r_neg' : all_real_real,
+        'r_add' : all_real_real,
+        'r_sub' : all_real_real,
+        'r_mul' : all_real_real,
+        'r_ge'  : binnary_real_bool,
+        'r_lt'  : binnary_real_bool,
+        'r_le'  : binnary_real_bool,
+        'r_gt'  : binnary_real_bool,
+        'r_eq'  : binnary_real_bool,
         'b_not' : all_bool_bool,
         'b_and' : all_bool_bool,
 
-        'boolean' : lambda x : isinstance(x, bool),
-        'integer' : lambda x : x.__class__ == int,
-        'real'    : lambda x : isinstance(x, float),
+        'boolean' : (lambda x :
+            (TypeSet.bool if x[0] >= TypeSet.bool else TypeSet.extremum)),
+        'integer' : (lambda x :
+            (TypeSet.bool if x[0] >= TypeSet.int else TypeSet.extremum)),
+        'real'    : (lambda x :
+            (TypeSet.bool if x[0] >= TypeSet.real else TypeSet.extremum))
         }
 
 
     def merge(self, other):
-        return self.__class__(self & other)
+        return self.__class__(self | other)
 
     @classmethod
     def allow(cls, constraint):
-        return constraint == TypeSet({'Boolean'})
+        truth = constraint == TypeSet.bool
+        L.debug('allow %s -> %s', constraint, truth)
+        return truth
 
 
     @classmethod
@@ -201,9 +206,17 @@ class TypeSet (ValueSet, frozenset):
 
     @classmethod
     def apply(cls, method, args_sets):
-        return cls.method_mapping[method.code](args_sets)
+        retval = cls.method_mapping[method.code](args_sets)
+        L.debug("%r%s -> %s", method, args_sets, retval)
+        return retval
 
-TypeSet.extremum = TypeSet({'Integer', 'Real', 'Boolean'})
+    def __repr__(self):
+        return str(set(self)) + hex(hash(self))
+
+TypeSet.extremum = TypeSet({})
+TypeSet.int = TypeSet({'Integer'})
+TypeSet.real = TypeSet({'Real'})
+TypeSet.bool = TypeSet({'Boolean'})
 
 
 
