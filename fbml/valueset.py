@@ -8,42 +8,20 @@ The valueset is the used to execute and verify the models.
 from collections.abc import abstractmethod, Set
 import itertools
 
+import operator as opr
+
 import logging
 L = logging.getLogger(__name__)
 
-from fbml.buildin import PY_MEHTODS
-
 class ValueSet (object):
-    """
-    The ValueSet should contain a
-
-    """
+    """ ValueSet """
 
     @abstractmethod
-    def union(self, other):
+    def merge(self, other):
         """
-        The union.
-        """
-
-    @abstractmethod
-    def intersection(self, other):
-        """
-        The union.
-
-        :param other:
-
-        :returns:
-            the intersection in the from of a :class:`ValueSet`
-        """
-
-    @abstractmethod
-    def subset(self, other):
-        """
-        :param other:
-            an other set of the same type.
-
-        :returns:
-            eighter ``True`` or ``False``
+        Merges the output of a function. This is often
+        seen as the union on under approximations, and
+        the intersection in over approximations
         """
 
     @classmethod
@@ -71,6 +49,33 @@ class FiniteSet(ValueSet, Set):
     is at most situations hopelessly ineffective
     """
 
+    method_mapping =  {
+        'i_neg' : opr.neg,
+        'i_add' : opr.add,
+        'i_sub' : opr.sub,
+        'i_mul' : opr.mul,
+        'i_ge'  : opr.ge,
+        'i_lt'  : opr.lt ,
+        'i_le'  : opr.le ,
+        'i_gt'  : opr.gt ,
+        'i_eq'  : opr.eq ,
+        'r_neg' : opr.neg,
+        'r_add' : opr.add,
+        'r_sub' : opr.sub,
+        'r_mul' : opr.mul,
+        'r_ge'  : opr.ge ,
+        'r_lt'  : opr.lt ,
+        'r_le'  : opr.le ,
+        'r_gt'  : opr.gt ,
+        'r_eq'  : opr.eq ,
+        'b_not' : opr.not_,
+        'b_and' : opr.and_,
+
+        'boolean' : lambda x : isinstance(x, bool),
+        'integer' : lambda x : x.__class__ == int,
+        'real'    : lambda x : isinstance(x, float),
+        }
+
 
     def __init__(self, start_set):
         self.inner_set = frozenset(start_set)
@@ -90,7 +95,7 @@ class FiniteSet(ValueSet, Set):
 
     @classmethod
     def apply(cls, method, args_sets):
-        pymethod = PY_MEHTODS[method]
+        pymethod = cls.method_mapping[method.name]
         def call(args):
             """ Calls the py method """
             retval = pymethod(*args)
