@@ -8,31 +8,64 @@
 from fbml.model import Method, node
 from fbml import optimize
 from fbml.buildin import METHODS
-from fbml.valueset import FiniteSet
+from fbml.valueset import FiniteSet, TypeSet, analyse
 
-
-def test_multiply():
-    """
-    this example test a simple mulitply
-    """
-
-    mult = (
-        Method('multi', ['number'],
-            {'x1': 10},
-            node('le', [node('number'), node('x1')]),
-            node('mul',[node('x1'), node('number')])
-            ),
+TAX = (
+    Method('tax', ['income'],
+        {'x1' : 300000.0, 'x3' : 0.40},
+        node('le', [node('income'), node('x1')]),
+        node('mul', [node('income'), node('x3')]),
+        ),
+    Method('tax', ['income'],
+        {'x1' : 300000.0, 'x2' : 0.60},
+        node('gt', [node('income'), node('x1')]),
+        node('add',[
+            node('mul', [
+                node('sub',[
+                    node('income'),
+                    node('x1')
+                    ]),
+                node('x2')
+                ]),
+            node('tax', [node('x1')]),
+            ])
+        ),
+    Method('main', ['income'],
+        {},
+        node('Real', [node('income')]),
+        node('tax', [node('income')])
         )
+    )
 
-    optimize.link(METHODS + mult)
+MUL_IF_LESS = (
+    Method('multi', ['number'],
+        {'x1': 10},
+        node('le', [node('number'), node('x1')]),
+        node('mul',[node('x1'), node('number')])
+        ),
+    )
 
-    value = mult[-1].evaluate((FiniteSet({2, 3}),), FiniteSet)
-    print(value)
 
-    assert value == FiniteSet({20, 30})
+def test_multiply_finite_set():
+    """
+    this example test a simple mulitply, tested with FiniteSet
+    """
+    optimize.link(METHODS + MUL_IF_LESS)
+    value = analyse(MUL_IF_LESS[-1], (2, ), FiniteSet)
+    assert value == FiniteSet.const(20), str(value)
 
+def test_multiply_type_set():
+    """
+    this example test a simple mulitply, tested with TypeSet
+    """
+    optimize.link(METHODS + MUL_IF_LESS)
+    value = analyse(MUL_IF_LESS[-1], (2, ), TypeSet)
+    assert value == TypeSet({'Integer'}), str(value)
 
-def test_taxes():
+    value = analyse(MUL_IF_LESS[-1], (2.0, ), TypeSet)
+    assert value == TypeSet.extremum, str(value)
+
+def test_taxes_finite_set():
     """
     This example test the taxes example
 
@@ -45,40 +78,8 @@ def test_taxes():
             income * 0.40.
     }
     """
-
-    tax = (
-        Method('tax', ['income'],
-            {'x1' : 300000.0, 'x3' : 0.40},
-            node('le', [node('income'), node('x1')]),
-            node('mul', [node('income'), node('x3')]),
-            ),
-        Method('tax', ['income'],
-            {'x1' : 300000.0, 'x2' : 0.60},
-            node('gt', [node('income'), node('x1')]),
-            node('add',[
-                node('mul', [
-                    node('sub',[
-                        node('income'),
-                        node('x1')
-                        ]),
-                    node('x2')
-                    ]),
-                node('tax', [node('x1')]),
-                ])
-            ),
-        Method('main', ['income'],
-            {},
-            node('Real', [node('income')]),
-            node('tax', [node('income')])
-            )
-        )
-
-    optimize.link(METHODS + tax)
-
-    value = tax[-1].evaluate((FiniteSet({300100.0}),), FiniteSet)
-    print(value)
-
-    assert value == FiniteSet({120060.0})
-
+    optimize.link(METHODS + TAX)
+    value = analyse(TAX[-1], (300100.0, ), FiniteSet)
+    assert value == FiniteSet.const(120060.0), str(value)
 
 

@@ -5,6 +5,7 @@
 """
 from functools import reduce
 from operator import itemgetter
+from itertools import zip_longest
 from collections import namedtuple, deque
 from collections.abc import abstractmethod
 
@@ -57,7 +58,7 @@ class Method (AbstactMethod):
             L.debug('%s returns : %s', self, value)
             return value
         else:
-            return valueset.min
+            return valueset.extremum
 
     def allow(self, argset, valueset):
         """
@@ -68,17 +69,19 @@ class Method (AbstactMethod):
         """
         initial = self.initial_values(argset, valueset)
         result = self.contraint.evaluate(initial, valueset)
-        truth = True in result and not False in result
+        truth = valueset.allow(result)
         L.debug('%s is allowed' if truth else '%s is not allowed', self)
         return truth
 
-    def initial_values(self, argset, valueset):
+    def initial_values(self, argsets, valueset):
         """
         :returns: the intial values of a execution using
         the argset
         """
         initial = {i : valueset.const(v) for i, v in self.constants.items()}
-        initial.update(zip(self.arguments, argset))
+        if len(self.arguments) != len(argsets):
+            raise Exception('%s %s not same length' % self.arguments, argsets)
+        initial.update(zip(self.arguments, argsets))
         return initial
 
     @property
@@ -102,8 +105,10 @@ class BuildInMethod(AbstactMethod):
         self.arguments = arguments
         self.code = code
 
-    def evaluate(self, argsset, valueset):
-        return valueset.apply(self, argsset)
+    def evaluate(self, argsets, valueset):
+        if len(self.arguments) != len(argsets):
+            raise Exception('%s %s not same length' % self.arguments, argsets)
+        return valueset.apply(self, argsets)
 
     def initial_values(self, argset, valueset):
         return dict(zip(self.arguments, argset))
@@ -175,7 +180,7 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
             if sources:
                 values = [m.evaluate(sources, valueset)
                         for m in internal_node.methods]
-                return reduce(valueset.union, values, valueset.min)
+                return reduce(valueset.merge, values, valueset.extremum)
             else:
                 return initial[internal_node.name]
 

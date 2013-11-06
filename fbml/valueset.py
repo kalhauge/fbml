@@ -5,7 +5,7 @@
 The valueset is the used to execute and verify the models.
 """
 
-from collections.abc import abstractmethod, Set
+from collections.abc import abstractmethod
 import itertools
 
 import operator as opr
@@ -13,22 +13,31 @@ import operator as opr
 import logging
 L = logging.getLogger(__name__)
 
+def analyse(method, arguments, valueset):
+    """ Short analysis tool """
+    return method.evaluate([valueset.const(arg) for arg in arguments], valueset)
+
 class ValueSet (object):
-    """ ValueSet """
+    """ ValueSet
+
+        Besides the abstact methods does the Value set also include a parameter
+        called :attr:`extremum`, which is the extremum of the analysis.
+
+    """
 
     @abstractmethod
     def merge(self, other):
-        """
-        Merges the output of a function. This is often
-        seen as the union on under approximations, and
-        the intersection in over approximations
-        """
+        """ Merges the output of a function.  """
+
+    @classmethod
+    def allow(cls, constraint):
+        """ Returns True or False after looking at the constraint """
+        raise NotImplementedError()
 
     @classmethod
     def apply(cls, method, args_sets):
-        """
-        Applies a function on a set of value
-        """
+        """ Applies a function on a set of value """
+        raise NotImplementedError()
 
     @classmethod
     def const(cls, value):
@@ -41,9 +50,9 @@ class ValueSet (object):
         :retruns:
             a :class:`ValueSet` in
         """
-        return cls(value)
+        raise NotImplementedError()
 
-class FiniteSet(ValueSet, Set):
+class FiniteSet(ValueSet, frozenset):
     """
     Finite set is the simplest implementation of ValueSet, but
     is at most situations hopelessly ineffective
@@ -76,26 +85,23 @@ class FiniteSet(ValueSet, Set):
         'real'    : lambda x : isinstance(x, float),
         }
 
-
-    def __init__(self, start_set):
-        self.inner_set = frozenset(start_set)
-
-    def union(self, other):
-        return self | other
-
-    def intersection(self, other):
-        return self & other
-
-    def subset(self, other):
-        return self <= other
+    def merge(self, other):
+        return self.__class__(self | other)
 
     @classmethod
     def const(cls, value):
         return cls({value})
 
     @classmethod
+    def allow(cls, constraint):
+        truth = constraint and not False in constraint
+        L.debug('allow %s -> %s', constraint, truth)
+        return truth
+
+    @classmethod
     def apply(cls, method, args_sets):
-        pymethod = cls.method_mapping[method.name]
+        #pylint: disable = W0142
+        pymethod = cls.method_mapping[method.code]
         def call(args):
             """ Calls the py method """
             retval = pymethod(*args)
@@ -105,19 +111,99 @@ class FiniteSet(ValueSet, Set):
         L.debug("%r%s -> %s", method, args_sets, retval)
         return retval
 
-    def __iter__(self):
-        return iter(self.inner_set)
 
-    def __len__(self):
-        return len(self.inner_set)
-
-    def __contains__(self, elm):
-        return elm in self.inner_set
-
-    def __repr__(self):
-        return repr(set(self.inner_set))
+FiniteSet.extremum = FiniteSet({})
 
 
-FiniteSet.min = FiniteSet({})
+def all_int_int(args):
+    if all('Integer' in a for a in args):
+        return TypeSet({'Integer'})
+    else:
+        return TypeSet.extremum
+
+def binnary_int_bool(args):
+    if all('Integer' in a for a in args):
+        return TypeSet({'Boolean'})
+    else:
+        return TypeSet.extremum
+
+def all_real_real(args):
+    if all('Real' in a for a in args):
+        return TypeSet({'Real'})
+    else:
+        return TypeSet.extremum
+
+def binnary_real_bool(args):
+    if all('Real' in a for a in args):
+        return TypeSet({'Boolean'})
+    else:
+        return TypeSet.extremum
+
+def all_bool_bool(args):
+    if all('Boolean' in a for a in args):
+        return TypeSet({'Boolean'})
+    else:
+        return TypeSet.extremum
+
+class TypeSet (ValueSet, frozenset):
+    """
+    A :class:`TypeSet` is used to evaluate the type of
+    a method or function.
+
+    The TypeSet annalysis is a over apporximation
+    """
+
+    consts = {
+            int : {'Integer'},
+            float : {'Real'},
+            bool : {'Boolean'}
+        }
+
+    method_mapping =  {
+        'i_neg' : all_int_int,
+        'i_add' : all_int_int,
+        'i_sub' : all_int_int,
+        'i_mul' : all_int_int,
+        'i_ge'  : binnary_int_bool,
+        'i_lt'  : binnary_int_bool,
+        'i_le'  : binnary_int_bool,
+        'i_gt'  : binnary_int_bool,
+        'i_eq'  : binnary_int_bool,
+        'r_neg' : all_int_int,
+        'r_add' : all_int_int,
+        'r_sub' : all_int_int,
+        'r_mul' : all_int_int,
+        'r_ge'  : binnary_int_bool,
+        'r_lt'  : binnary_int_bool,
+        'r_le'  : binnary_int_bool,
+        'r_gt'  : binnary_int_bool,
+        'r_eq'  : binnary_int_bool,
+        'b_not' : all_bool_bool,
+        'b_and' : all_bool_bool,
+
+        'boolean' : lambda x : isinstance(x, bool),
+        'integer' : lambda x : x.__class__ == int,
+        'real'    : lambda x : isinstance(x, float),
+        }
+
+
+    def merge(self, other):
+        return self.__class__(self & other)
+
+    @classmethod
+    def allow(cls, constraint):
+        return constraint == TypeSet({'Boolean'})
+
+
+    @classmethod
+    def const(cls, value):
+        return cls(cls.consts[value.__class__])
+
+    @classmethod
+    def apply(cls, method, args_sets):
+        return cls.method_mapping[method.code](args_sets)
+
+TypeSet.extremum = TypeSet({'Integer', 'Real', 'Boolean'})
+
 
 
