@@ -11,7 +11,6 @@ from fbml.buildin import METHODS
 from fbml.valueset import FiniteSet
 
 
-
 def test_multiply():
     """
     this example test a simple mulitply
@@ -36,6 +35,15 @@ def test_multiply():
 def test_taxes():
     """
     This example test the taxes example
+
+    tax {
+        (income) income > 300000 ->
+            above = income - 300000,
+            below = 300000,
+            above * 0.60 + tax below.
+        (income) income <= 300000 ->
+            income * 0.40.
+    }
     """
 
     tax = (
@@ -67,10 +75,10 @@ def test_taxes():
 
     optimize.link(METHODS + tax)
 
-    value = tax[-1].evaluate((FiniteSet({10000.0}),), FiniteSet)
+    value = tax[-1].evaluate((FiniteSet({300100.0}),), FiniteSet)
     print(value)
 
-    assert value == FiniteSet({4000.0})
+    assert value == FiniteSet({120060.0})
 
 
 

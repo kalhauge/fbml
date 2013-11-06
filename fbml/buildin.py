@@ -4,60 +4,40 @@
 
 """
 import operator as opr
-import numbers
 import logging
 L = logging.getLogger(__name__)
 
-from fbml.model import Method, node
+from fbml.model import BuildInMethod, node
 
-boolean = Method('Boolean', ('value',), {'true': True}, node('true'), 'boolean')
-integer = Method('Integer', ('value',), {'true': True}, node('true'), 'integer')
-real    = Method('Real',    ('value',), {'true': True}, node('true'), 'real')
-
-
-UNARY_BOOLEAN = node('Boolean', [node('value')], [boolean])
-BINARY_BOOLEAN = node('and', [
-            node('Boolean', [node('a')],[boolean]),
-            node('Boolean', [node('b')],[boolean])
-            ], [b_and])
-
-b_not = Method('not', ('a',),     {}, UNARY_BOOLEAN,  'b_not')
-b_and = Method('and', ('a', 'b'), {}, BINARY_BOOLEAN, 'b_and')
-
-UNARY_INTEGER = node('Integer', [node('value')], [integer])
-BINARY_INTEGER = node('and', [
-            node('Integer', [node('a')], [integer]),
-            node('Integer', [node('b')], [integer])
-            ], [b_and])
-
-UNARY_REAL    = node('Real',    [node('value')], [real])
-BINARY_REAL = node('and', [
-            node('Real', [node('a')], [real]),
-            node('Real', [node('b')], [real])
-            ], [b_and] )
+boolean = BuildInMethod('Boolean', ('value',), 'boolean')
+integer = BuildInMethod('Integer', ('value',), 'integer')
+real    = BuildInMethod('Real',    ('value',), 'real')
 
 
-i_neg = Method('neg', ('a',),     'i_neg')
+b_not = BuildInMethod('not', ('a',),     'b_not')
+b_and = BuildInMethod('and', ('a', 'b'), 'b_and')
 
-i_add = Method('add', ('a', 'b'), 'i_add')
-i_sub = Method('sub', ('a', 'b'), 'i_sub')
-i_mul = Method('mul', ('a', 'b'), 'i_mul')
-i_ge  = Method('ge',  ('a', 'b'), 'i_ge')
-i_lt  = Method('lt',  ('a', 'b'), 'i_lt')
-i_le  = Method('le',  ('a', 'b'), 'i_le')
-i_gt  = Method('gt',  ('a', 'b'), 'i_gt')
-i_eq  = Method('eq',  ('a', 'b'), 'i_eq')
+i_neg = BuildInMethod('neg', ('a',),     'i_neg')
 
-r_neg = Method('neg', ('a',),     'r_neg')
+i_add = BuildInMethod('add', ('a', 'b'), 'i_add')
+i_sub = BuildInMethod('sub', ('a', 'b'), 'i_sub')
+i_mul = BuildInMethod('mul', ('a', 'b'), 'i_mul')
+i_ge  = BuildInMethod('ge',  ('a', 'b'), 'i_ge')
+i_lt  = BuildInMethod('lt',  ('a', 'b'), 'i_lt')
+i_le  = BuildInMethod('le',  ('a', 'b'), 'i_le')
+i_gt  = BuildInMethod('gt',  ('a', 'b'), 'i_gt')
+i_eq  = BuildInMethod('eq',  ('a', 'b'), 'i_eq')
 
-r_add = Method('add', ('a', 'b'), 'r_add')
-r_sub = Method('sub', ('a', 'b'), 'r_sub')
-r_mul = Method('mul', ('a', 'b'), 'r_mul')
-r_ge  = Method('ge',  ('a', 'b'), 'r_ge')
-r_lt  = Method('lt',  ('a', 'b'), 'r_lt')
-r_le  = Method('le',  ('a', 'b'), 'r_le')
-r_gt  = Method('gt',  ('a', 'b'), 'r_gt')
-r_eq  = Method('eq',  ('a', 'b'), 'r_eq')
+r_neg = BuildInMethod('neg', ('a',),     'r_neg')
+
+r_add = BuildInMethod('add', ('a', 'b'), 'r_add')
+r_sub = BuildInMethod('sub', ('a', 'b'), 'r_sub')
+r_mul = BuildInMethod('mul', ('a', 'b'), 'r_mul')
+r_ge  = BuildInMethod('ge',  ('a', 'b'), 'r_ge')
+r_lt  = BuildInMethod('lt',  ('a', 'b'), 'r_lt')
+r_le  = BuildInMethod('le',  ('a', 'b'), 'r_le')
+r_gt  = BuildInMethod('gt',  ('a', 'b'), 'r_gt')
+r_eq  = BuildInMethod('eq',  ('a', 'b'), 'r_eq')
 
 
 

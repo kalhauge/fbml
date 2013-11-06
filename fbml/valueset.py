@@ -90,10 +90,15 @@ class FiniteSet(ValueSet, Set):
 
     @classmethod
     def apply(cls, method, args_sets):
-        L.debug("%s buildin %s %s", method, PY_MEHTODS[method], args_sets)
-        return cls(itertools.starmap(
-            PY_MEHTODS[method], itertools.product(*args_sets)))
-
+        pymethod = PY_MEHTODS[method]
+        def call(args):
+            """ Calls the py method """
+            retval = pymethod(*args)
+            L.debug("%s%s -> %s", pymethod, args, retval)
+            return retval
+        retval = cls(call(args) for args in itertools.product(*args_sets))
+        L.debug("%r%s -> %s", method, args_sets, retval)
+        return retval
 
     def __iter__(self):
         return iter(self.inner_set)

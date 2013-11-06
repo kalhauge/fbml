@@ -7,16 +7,16 @@ from functools import reduce
 from operator import itemgetter
 from collections import namedtuple, deque
 from collections.abc import abstractmethod
-from pprint import pformat
 
 import logging
 L = logging.getLogger(__name__)
 
 class AbstactMethod (object):
-
     """
     An AbstractMethod
     """
+
+    code = 'abstract'
 
     @abstractmethod
     def evaluate(self, args, valueset):
@@ -26,6 +26,8 @@ class AbstactMethod (object):
     def initial_values(self, args, valueset):
         """ Returst the dict pointing to the initial_values """
 
+    def __repr__(self):
+        return self.code
 
 class Method (AbstactMethod):
     """
@@ -35,6 +37,7 @@ class Method (AbstactMethod):
     is_buildin = False
 
     def __init__(self, name, arguments, constants, contraint, target):
+        # pylint: disable = R0913
         self.name = name
         self.arguments = arguments
         self.constants = constants
@@ -51,7 +54,7 @@ class Method (AbstactMethod):
             initial = self.initial_values(args, valueset)
             L.debug("%s inital values: %s", self, initial)
             value =  self.target.evaluate(initial, valueset)
-            L.debug('%s returns : %s',self, value)
+            L.debug('%s returns : %s', self, value)
             return value
         else:
             return valueset.min
@@ -60,7 +63,8 @@ class Method (AbstactMethod):
         """
         Returns if the args is a  allowed subset.
 
-        This is under apporximation
+        This is not working apporpriate
+
         """
         initial = self.initial_values(argset, valueset)
         result = self.contraint.evaluate(initial, valueset)
@@ -76,9 +80,6 @@ class Method (AbstactMethod):
         initial = {i : valueset.const(v) for i, v in self.constants.items()}
         initial.update(zip(self.arguments, argset))
         return initial
-
-    def __repr__(self):
-        return self.code
 
     @property
     def code (self):
@@ -159,9 +160,9 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
             Whatever the function returns
         """
         mapping = {}
-        for node in reversed(self.nodes_in_order()):
-            sources = tuple(mapping[s] for s in node.sources)
-            mapping[node] = function(node, sources)
+        for visit_node in reversed(self.nodes_in_order()):
+            sources = tuple(mapping[s] for s in visit_node.sources)
+            mapping[visit_node] = function(visit_node, sources)
         return mapping[self]
 
     def evaluate(self, initial, valueset):
@@ -189,7 +190,8 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
         """
         newline = lambda ind: '\n' + '  '*ind
 
-        def pformat_list(str_list, indent=0, paran = ('[', ']')):
+        def pformat_list(str_list, indent, paran = ('[', ']')):
+            """ pretty formats a list """
             str_list = [s for s in str_list if s]
             if str_list:
                 if len(str_list) == 1:
@@ -218,9 +220,11 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
 
     @property
     def code (self):
+        """ returns the code of the node """
         return self.name + "-" +  hex(id(self))
 
 
 def node(name, sources=tuple(), methods=tuple()):
+    """ Simple constructor for a node """
     return Node(name, tuple(sources), tuple(methods))
 

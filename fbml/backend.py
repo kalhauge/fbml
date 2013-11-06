@@ -5,6 +5,7 @@
 A simple backend written in llvm
 
 """
+#pylint: disable = E1101
 from copy import copy
 from functools import reduce
 from itertools import starmap
@@ -15,9 +16,6 @@ import llvm.core as llvmc
 
 import logging
 L = logging.getLogger(__name__)
-
-from fbml import value
-
 
 
 BUILDIN_MAP = {
@@ -94,7 +92,8 @@ def buildin_method(bldr, name, args):
                 assert False, 'Real comparation'
                 return bldr.fcmp(funcname, lhs, rhs)
             else:
-                assert not funcname.startswith('f'), "{}({},{})".format(funcname, lhs, rhs)
+                assert not funcname.startswith('f'), "{}({},{})".format(
+                        funcname, lhs, rhs)
                 return getattr(bldr, funcname)(lhs, rhs)
 
     elif name in TYPE_MAP:
