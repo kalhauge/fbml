@@ -5,7 +5,6 @@
 """
 from functools import reduce
 from operator import itemgetter
-from itertools import zip_longest
 from collections import namedtuple, deque
 from collections.abc import abstractmethod
 
@@ -54,7 +53,7 @@ class Method (AbstactMethod):
         if not args in self.dynammic:
             L.debug('not found in %s', self.dynammic)
             self.dynammic[args] = None
-            retval = valueset.extremum
+            retval = valueset.EXTREMUM
             while retval != self.dynammic[args]:
                 self.dynammic[args] = retval
                 if self.allow(args, valueset):
@@ -62,7 +61,7 @@ class Method (AbstactMethod):
                     L.debug("%s inital values: %s", self, initial)
                     retval = self.target.evaluate(initial, valueset)
                 else:
-                    retval = valueset.extremum
+                    retval = valueset.EXTREMUM
         else:
             retval = self.dynammic[args]
         L.debug('%s returns : %s', self, retval)
@@ -188,7 +187,7 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
             if sources:
                 values = [m.evaluate(sources, valueset)
                         for m in internal_node.methods]
-                return reduce(valueset.merge, values, valueset.extremum)
+                return reduce(valueset.merge, values, valueset.EXTREMUM)
             else:
                 return initial[internal_node.name]
 
@@ -208,15 +207,16 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
             str_list = [s for s in str_list if s]
             if str_list:
                 if len(str_list) == 1:
-                    return paran[0] + str_list[0] + paran[1]
+                    return_str = paran[0] + str_list[0] + paran[1]
                 else:
-                    return (paran[0] +
+                    return_str = (paran[0] +
                         newline(indent) +
                         (',' + newline(indent)).join(str_list) +
                         newline(indent) +
                         paran[1])
             else:
-                return ''
+                return_str = ''
+            return return_str
 
         args = [
             repr(self.name),

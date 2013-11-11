@@ -1,5 +1,4 @@
 """
-
 .. currentmodule:: fbml.test.test_optimize
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
@@ -8,8 +7,7 @@
 from fbml.model import Method, node
 from fbml import optimize
 from fbml.buildin import METHODS
-from fbml.valueset import FiniteSet,  analyse
-from fbml.analysis import typeset
+from fbml.analysis import typeset, finiteset, analyse
 
 TAX = (
     Method('tax', ['income'],
@@ -52,8 +50,8 @@ def test_multiply_finite_set():
     this example test a simple mulitply, tested with FiniteSet
     """
     optimize.link(METHODS + MUL_IF_LESS)
-    value = analyse(MUL_IF_LESS[-1], (2, ), FiniteSet)
-    assert value == FiniteSet.const(20), str(value)
+    value = analyse(MUL_IF_LESS[-1], (2, ), finiteset)
+    assert value == finiteset.const(20), str(value)
 
 def test_multiply_type_set():
     """
@@ -80,8 +78,8 @@ def test_taxes_finite_set():
     }
     """
     optimize.link(METHODS + TAX)
-    value = analyse(TAX[-1], (300100.0, ), FiniteSet)
-    assert value == FiniteSet.const(120060.0), str(value)
+    value = analyse(TAX[-1], (300100.0, ), finiteset)
+    assert value == finiteset.const(120060.0), str(value)
 
 def test_taxes_type_set():
     """
@@ -97,9 +95,8 @@ def test_taxes_type_set():
     }
     """
     optimize.link(METHODS + TAX)
-    value = analyse(TAX[-1], (300100.0, ), TypeSet)
-    assert False
-    assert value == TypeSet({'Real'}), str(value)
+    value = analyse(TAX[-1], (300100.0, ), typeset)
+    assert value == typeset.REAL, str(value)
 
 
 

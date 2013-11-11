@@ -31,9 +31,10 @@ def all_is(superset, returnset):
 
 def if_subset(typeset, thenset, elseset):
     """
-    Creates a function able to test if a function is a subset
+    Creates a function able to test if a tuple containing a single
+    set which is a subset of of the typeset argumment.
     """
-    return lambda other: thenset if other >= typeset else elseset
+    return lambda other: thenset if other[0] >= typeset else elseset
 
 METHOD_MAPPING =  {
     'i_neg'   : all_is(INTEGER, INTEGER),

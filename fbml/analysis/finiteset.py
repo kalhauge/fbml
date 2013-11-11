@@ -37,7 +37,7 @@ METHOD_MAPPING =  {
     'real'    : lambda x : isinstance(x, float),
     }
 
-EXREMUM = frozenset({})
+EXTREMUM = frozenset({})
 
 def merge(first, other):
     """ Merges two finitesets """
