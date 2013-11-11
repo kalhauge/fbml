@@ -62,17 +62,29 @@ METHOD_MAPPING =  {
     }
 
 def merge(first, other):
+    """
+    Merges the first and an other set after the use of methods.
+    """
     return frozenset(first | other)
 
 def allow(constraint):
+    """
+    Returns wether the constraint is true or not.
+    """
     truth = constraint == BOOLEAN
     L.debug('allow %s -> %s', constraint, truth)
     return truth
 
 def const(value):
-    return frozenset(CONSTS[value.__class__])
+    """
+    :returns: the constant of a value
+    """
+    return CONSTS[value.__class__]
 
 def apply(method, args_sets):
+    """
+    :returns: the set for applying the method on the arguments.
+    """
     retval = METHOD_MAPPING[method.code](args_sets)
     L.debug("%r%s -> %s", method, args_sets, retval)
     return retval

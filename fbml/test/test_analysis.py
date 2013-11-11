@@ -8,7 +8,8 @@
 from fbml.model import Method, node
 from fbml import optimize
 from fbml.buildin import METHODS
-from fbml.valueset import FiniteSet, TypeSet, analyse
+from fbml.valueset import FiniteSet,  analyse
+from fbml.analysis import typeset
 
 TAX = (
     Method('tax', ['income'],
@@ -59,11 +60,11 @@ def test_multiply_type_set():
     this example test a simple mulitply, tested with TypeSet
     """
     optimize.link(METHODS + MUL_IF_LESS)
-    value = analyse(MUL_IF_LESS[-1], (2, ), TypeSet)
-    assert value == TypeSet({'Integer'}), str(value)
+    value = analyse(MUL_IF_LESS[-1], (2, ), typeset)
+    assert value == typeset.INTEGER,  str(value)
 
-    value = analyse(MUL_IF_LESS[-1], (2.0, ), TypeSet)
-    assert value == TypeSet.extremum, str(value)
+    value = analyse(MUL_IF_LESS[-1], (2.0, ), typeset)
+    assert value == typeset.EXTREMUM, str(value)
 
 def test_taxes_finite_set():
     """
