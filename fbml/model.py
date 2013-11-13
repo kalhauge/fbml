@@ -100,10 +100,7 @@ class Method (AbstactMethod):
 
 class BuildInMethod(AbstactMethod):
 
-    """
-    BuildInMethod
-
-    """
+    """ BuildInMethod """
 
     is_buildin = True
 
