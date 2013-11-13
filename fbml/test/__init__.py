@@ -41,3 +41,24 @@ MUL_IF_LESS = (
         ),
     )
 
+ABS = (
+    Method('abs', ['a'],
+        {'c': 0 },
+        node('lt', [node('a'), node('c')]),
+        node('neg',[node('a')])
+        ),
+    Method('abs', ['a'],
+        {'c': 0 },
+        node('ge', [node('a'), node('c')]),
+        node('a')
+        ),
+    )
+
+INCR = (
+    Method('abs', ['a'],
+        {'test': True, 'value' : 1 },
+        node('test'),
+        node('add', [node('test'), node('value')]
+        )
+    ),
+)

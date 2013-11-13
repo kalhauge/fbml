@@ -92,11 +92,20 @@ class Method (AbstactMethod):
         return initial
 
     @property
-    def code (self):
+    def code(self):
         """
         Returns the code of the method
         """
         return self.name + "-" +  hex(id(self))
+
+    def copy(self):
+        """ Returns a copy """
+        return Method(self.name,
+                self.arguments,
+                self.constants,
+                self.constraint,
+                self.target)
+
 
 class BuildInMethod(AbstactMethod):
 
