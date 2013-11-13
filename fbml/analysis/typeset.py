@@ -13,6 +13,8 @@ BOOLEAN  = frozenset({'Boolean'})
 REAL     = frozenset({'Real'})
 EXTREMUM = frozenset({})
 
+VALUES = (INTEGER, BOOLEAN, REAL)
+
 
 CONSTS = {
     int   : INTEGER,
@@ -23,7 +25,7 @@ CONSTS = {
 def all_is(superset, returnset):
     """
     Tests if all arguments is a subset of the superset, if it is returnset is
-    returned else the EXREMUM is returned.
+    returned else the EXTREMUM is returned.
     """
     return (lambda args: returnset
             if all(superset >= arg for arg in args)

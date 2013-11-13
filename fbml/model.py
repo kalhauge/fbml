@@ -36,12 +36,12 @@ class Method (AbstactMethod):
 
     is_buildin = False
 
-    def __init__(self, name, arguments, constants, contraint, target):
+    def __init__(self, name, arguments, constants, constraint, target):
         # pylint: disable = R0913
         self.name = name
         self.arguments = arguments
         self.constants = constants
-        self.contraint = contraint
+        self.constraint = constraint
         self.target = target
         self.dynammic = {}
 
@@ -59,7 +59,7 @@ class Method (AbstactMethod):
                 if self.allow(args, valueset):
                     initial = self.initial_values(args, valueset)
                     L.debug("%s inital values: %s", self, initial)
-                    retval = self.target.evaluate(initial, valueset)
+                    retval = self.target.evaluate_all(initial, valueset)
                 else:
                     retval = valueset.EXTREMUM
         else:
@@ -75,7 +75,7 @@ class Method (AbstactMethod):
 
         """
         initial = self.initial_values(argset, valueset)
-        result = self.contraint.evaluate(initial, valueset)
+        result = self.constraint.evaluate_all(initial, valueset)
         truth = valueset.allow(result)
         L.debug('%s is allowed' if truth else '%s is not allowed', self)
         return truth
@@ -87,7 +87,7 @@ class Method (AbstactMethod):
         """
         initial = {i : valueset.const(v) for i, v in self.constants.items()}
         if len(self.arguments) != len(argsets):
-            raise Exception('%s %s not same length' % self.arguments, argsets)
+            raise Exception('%s %s not same length' % (self.arguments, argsets))
         initial.update(zip(self.arguments, argsets))
         return initial
 
@@ -114,7 +114,7 @@ class BuildInMethod(AbstactMethod):
 
     def evaluate(self, argsets, valueset):
         if len(self.arguments) != len(argsets):
-            raise Exception('%s %s not same length' % self.arguments, argsets)
+            raise Exception('%s %s not same length' % (self.arguments, argsets))
         return valueset.apply(self, argsets)
 
     def initial_values(self, argset, valueset):
@@ -158,9 +158,6 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
         """
         A visitor for nodes.
 
-        :param basenode:
-            The basenode is the lowest node in the graph
-
         :param function:
             Is the function that for each node returns anything
             . The function must accept a node, and a
@@ -177,7 +174,12 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
             mapping[visit_node] = function(visit_node, sources)
         return mapping[self]
 
-    def evaluate(self, initial, valueset):
+    def evaluate(self, args, valueset):
+        """ Evaluate a single node """
+        values = [m.evaluate(args, valueset) for m in self.methods]
+        return reduce(valueset.merge, values, valueset.EXTREMUM)
+
+    def evaluate_all(self, initial, valueset):
         """ Evaluate helper function """
 
         L.debug('%s %s', self.code, self.methods)
@@ -185,9 +187,7 @@ class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
         def evaluate_node(internal_node, sources):
             """ evaluates a single node """
             if sources:
-                values = [m.evaluate(sources, valueset)
-                        for m in internal_node.methods]
-                return reduce(valueset.merge, values, valueset.EXTREMUM)
+                return internal_node.evaluate(sources, valueset)
             else:
                 return initial[internal_node.name]
 
