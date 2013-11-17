@@ -17,6 +17,8 @@ import llvm.core as llvmc
 import logging
 L = logging.getLogger(__name__)
 
+from fbml.analysis import typeset, Evaluator
+
 
 BUILDIN_MAP = {
     'r_add'     : 'fadd',
@@ -110,30 +112,27 @@ TYPE_MAP = {
     'Boolean'  : (llvmc.Type.int(1),'int'),
 }
 
-def evaluate_type_of_methods(methods):
-    for method in methods:
-        pass
-
-
-def constant_from_value(val):
+def constant_from_value(valueset):
     """
     :param val:
         The value
 
     :returns: an llvm constant
     """
+    val, = valueset
     llvm_type, type_name = TYPE_MAP[typename_of_value(val)]
     return getattr(llvmc.Constant, type_name)(llvm_type, val)
 
-def type_of_value(val):
+def type_of_value(valueset):
     """
-    :param val:
-        The value or value set
+    :param valueset:
+        a valueset
 
     :returns:
         an llvm type
     """
-    return TYPE_MAP[typename_of_value(val)][0]
+    val, = valueset
+    return TYPE_MAP[val][0]
 
 def typename_of_value(val):
     """
@@ -341,6 +340,8 @@ class LLVMCompiler (collections.namedtuple('Context', [
             node_data = self.bldr.call(func, arg_val)
             return Result(node_data, self.bldr)
 
+
+
 class LLVMBackend(object):
     """
     This is the LLVM backend for fbml
@@ -350,31 +351,25 @@ class LLVMBackend(object):
         self.module = llvmc.Module.new('sandbox')
         self.functions = {}
 
-    def build_function(self, name, argument_names, methods):
+    def build_function(self, function, types):
         """
         Creates a LLVM function from all of these methods. Assumes that the
         methods have the same argument names.
         """
+        return_type = Evaluator(typeset).evaluate_function(function, types)
 
-        allowed_args = [method.allowed_arguments(value.union)
-                for method in methods]
+        if not return_type:
+            raise Exception('Function not valid for arguments')
 
-        arguments = [ reduce(value.union,
-                        (allowed[a] for allowed in allowed_args))
-                     for a in argument_names]
-
-        return_values = reduce(value.union,
-                (method.predict_return() for method in methods))
-
-        arg_types = [type_of_value(arg) for arg in arguments]
+        arg_types = [type_of_value(arg) for arg in types]
 
         function = llvmc.Function.new(
             self.module,
             llvmc.Type.function(
-                type_of_value(return_values),
+                type_of_value(return_type),
                 arg_types
                 ),
-            name
+            function.name + '_' + join(typechar(arg) for arg in types)
             )
         self.functions[tuple(methods)] = function
 
@@ -394,17 +389,12 @@ class LLVMBackend(object):
             L.error(eval(str(exc)).decode(encoding='UTF-8'))
         return function
 
-    def function_from_methods(self, methods):
-        """
-        get_function
-        """
-        key = tuple(methods)
+    def compile(self, function, types):
+        """ Compiles a FBML function to a LLVM Function """
+        key = (function, types)
         if key in self.functions:
             return self.functions[key]
         else:
-            first, *_ = methods
-            name = first.name
-            argument_names = list(first.arguments)
-            return self.build_function(name, argument_names, methods)
+            return self.build_function(function, types)
 
 
