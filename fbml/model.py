@@ -46,8 +46,12 @@ class Function(object):
 class Method (namedtuple('Method', ['guard', 'statement'])):
     """ Method """
 
+    is_buildin = False
+
 class BuildInMethod(namedtuple('BuildInMethod', ['code'])):
     """ BuildInMethod """
+
+    is_buildin = True
 
 class Node (namedtuple('Node', ['function', 'sources'])):
     """ Node """
