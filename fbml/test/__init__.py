@@ -8,6 +8,13 @@ from fbml.model import Method, Function
 from fbml import buildin
 from fbml import node
 
+INCR = Function('incr', ['a'], {'test': True, 'value' : 1 }, [
+        Method(
+            node('test'),
+            node(buildin.add, [node('a'), node('value')])
+            )
+        ])
+
 TAX = Function.declare('tax', ['income'])
 
 TAX.define(
@@ -54,11 +61,3 @@ MUL_IF_LESS = Function('multi', ['number'], {'x1': 10},
 #         ),
 #     )
 #
-# INCR = (
-#     Method('abs', ['a'],
-#         {'test': True, 'value' : 1 },
-#         node('test'),
-#         node('add', [node('test'), node('value')]
-#         )
-#     ),
-# )
