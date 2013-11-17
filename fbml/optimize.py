@@ -11,30 +11,30 @@ L = logging.getLogger(__name__)
 from fbml import model
 from fbml.analysis import typeset
 
-def link(methods):
-    """
-    Links the nodes to the methods
-    """
-    named_methods = {}
-    # Created the method table
-    for method in methods:
-        named_methods.setdefault(method.name, []).append(method)
+# def link(methods):
+#     """
+#     Links the nodes to the methods
+#     """
+#     named_methods = {}
+#     # Created the method table
+#     for method in methods:
+#         named_methods.setdefault(method.name, []).append(method)
+#
+#     def add_methods(old_node, sources):
+#         """
+#         Add methods to nodes, and returs a new node
+#         """
+#         if sources:
+#             return model.node(old_node.name,
+#                     sources, named_methods[old_node.name])
+#         else:
+#             return old_node
+#
+#     for method in (m for m in methods if not m.is_buildin):
+#         method.constraint = method.constraint.visit(add_methods)
+#         method.target = method.target.visit(add_methods)
 
-    def add_methods(old_node, sources):
-        """
-        Add methods to nodes, and returs a new node
-        """
-        if sources:
-            return model.node(old_node.name,
-                    sources, named_methods[old_node.name])
-        else:
-            return old_node
-
-    for method in (m for m in methods if not m.is_buildin):
-        method.constraint = method.constraint.visit(add_methods)
-        method.target = method.target.visit(add_methods)
-
-def clean_function(methods, args, valueset):
+def clean_function(function, args, valueset):
     """
     Cleans the methods using a valueset analysis, and
     the signature of the methods.
@@ -51,7 +51,7 @@ def clean_function(methods, args, valueset):
                         method.evaluate(args, valueset) != valueset.EXTREMUM]
                 if not new_methods:
                     raise MethodNotValid(methods)
-                new_node = model.node(node.name, nodes, new_methods)
+                new_node = model.node(SubFunction(), nodes)
                 return_values = new_node.evaluate(args, valueset)
                 return return_values, new_node
 

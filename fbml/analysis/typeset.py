@@ -39,6 +39,7 @@ def if_subset(typeset, thenset, elseset):
     return lambda other: thenset if other[0] >= typeset else elseset
 
 METHOD_MAPPING =  {
+    'load'    : lambda x : tuple(x)[0],
     'i_neg'   : all_is(INTEGER, INTEGER),
     'i_add'   : all_is(INTEGER, INTEGER),
     'i_sub'   : all_is(INTEGER, INTEGER),

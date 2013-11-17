@@ -11,6 +11,7 @@ L = logging.getLogger(__name__)
 
 
 METHOD_MAPPING =  {
+    'load'  : lambda x : x,
     'i_neg' : opr.neg,
     'i_add' : opr.add,
     'i_sub' : opr.sub,
