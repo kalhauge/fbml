@@ -9,37 +9,19 @@ import logging
 L = logging.getLogger(__name__)
 
 from fbml import model
-from fbml.analysis import typeset
+from fbml.analysis import Evaluator
 
-# def link(methods):
-#     """
-#     Links the nodes to the methods
-#     """
-#     named_methods = {}
-#     # Created the method table
-#     for method in methods:
-#         named_methods.setdefault(method.name, []).append(method)
-#
-#     def add_methods(old_node, sources):
-#         """
-#         Add methods to nodes, and returs a new node
-#         """
-#         if sources:
-#             return model.node(old_node.name,
-#                     sources, named_methods[old_node.name])
-#         else:
-#             return old_node
-#
-#     for method in (m for m in methods if not m.is_buildin):
-#         method.constraint = method.constraint.visit(add_methods)
-#         method.target = method.target.visit(add_methods)
 
 def clean_function(function, args, valueset):
     """
     Cleans the methods using a valueset analysis, and
     the signature of the methods.
     """
-    for method in methods:
+
+
+
+    initial = function.bound_values(valueset)
+    for method in function.methods:
         initial = method.initial_values(args, valueset)
         def clean_node(node, sources):
             """ Sources is the clean nodes, and the arguments """

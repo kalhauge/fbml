@@ -28,6 +28,7 @@ class Evaluator(object):
     def __init__(self, valueset):
         self.valueset = valueset
         self.dynamic = {}
+        self.depends = {}
 
     def evaluate_function(self, function, arguments):
         """ Evaluates a function """
@@ -43,11 +44,17 @@ class Evaluator(object):
                     self.dynamic[(function, arguments)] = new
             return new
 
-    def _evaluate_function(self, function, arguments):
-        valueset = self.valueset
-        bound_values = OrderedDict({k : valueset.const(v)
+    def bound_values(self, function, arguments):
+        """ Bound values of a  function """
+        bound_values = OrderedDict({k : self.valueset.const(v)
                 for k, v in function.constants.items()})
         bound_values.update(zip(function.arguments, arguments))
+        return bound_values
+
+    def _evaluate_function(self, function, arguments):
+        """ internal function for evaluating a function """
+        valueset = self.valueset
+        bound_values = self.bound_values(function, arguments)
         method_calls = zip(function.methods, repeat(bound_values))
         values = starmap(self.evaluate_method, method_calls)
         return reduce(valueset.merge, values, valueset.EXTREMUM)
@@ -71,6 +78,7 @@ class Evaluator(object):
 
     def evaluate_node(self, node, sources):
         """ Evaluates a single node """
+        self.depends[node] = node.function, sources
         return self.evaluate_function(node.function, sources)
 
     def evaluate(self, function, args):

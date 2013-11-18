@@ -48,7 +48,7 @@ class Method (namedtuple('Method', ['guard', 'statement'])):
 
     is_buildin = False
 
-class BuildInMethod(namedtuple('BuildInMethod', ['code'])):
+class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
     """ BuildInMethod """
 
     is_buildin = True
@@ -101,6 +101,11 @@ class Node (namedtuple('Node', ['function', 'sources'])):
         :returns:
             Whatever the visitor returns
         """
+        return self.visit_mapping(visitor, initial)[self]
+
+
+    def visit_mapping(self, visitor, initial):
+        """ Returns the internal mapping for the visitor """
         mapping = dict(initial)
         for visit_node in reversed(self.nodes_in_order()):
             try:
@@ -109,8 +114,7 @@ class Node (namedtuple('Node', ['function', 'sources'])):
             except KeyError:
                 L.error("KeyError: %s, %s", visit_node, mapping)
                 raise
-        return mapping[self]
-
+        return mapping
 
     def __repr__(self):
         return 'Node(%s, %s)' % self

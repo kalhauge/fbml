@@ -70,11 +70,15 @@ def buildin_method(bldr, name, args):
     """
     calls an build in method
     """
+    if name == 'load':
+        return args
     if name in BUILDIN_MAP:
+
+        # TESTS
         if name.startswith('i'):
-            assert args[0].type == TYPE_MAP['Integer'][0]
+            assert args[0].type == TYPE_MAP['Integer'].internal
         elif name.startswith('r'):
-            assert args[0].type == TYPE_MAP['Real'][0]
+            assert args[0].type == TYPE_MAP['Real'].internal
         else:
             pass
 
@@ -97,12 +101,12 @@ def buildin_method(bldr, name, args):
                         funcname, lhs, rhs)
                 return getattr(bldr, funcname)(lhs, rhs)
 
-    elif name in TYPE_MAP:
-        test = args[0].type == TYPE_MAP[name][0]
-        ret = constant_from_value(test)
-        return ret
+#    elif name in TYPE_MAP:
+#        test = args[0].type == TYPE_MAP[name][0]
+#        ret = constant_from_value(test)
+#        return ret
     else:
-        raise RuntimeError('Not a buildin method')
+        raise RuntimeError('Not a buildin method %s' % name)
 
 
 TYPE_MAP = {
@@ -168,7 +172,7 @@ Block = collections.namedtuple('Block', [
 
 class LLVMCompiler (collections.namedtuple('Context', [
     'datamap',
-    'backend',
+    'functions',
     'bldr',
     ])):
 
@@ -251,16 +255,6 @@ class LLVMCompiler (collections.namedtuple('Context', [
         else:
             return succ_result
 
-    def compile_methods(self, methods):
-        """
-        Compiles an list of methods
-        _"""
-
-        blocks = self._create_blocks(methods)
-        results = [compiler.compile_method(method)
-                    for compiler, method in blocks]
-        return self._join_blocks(results)
-
     def compile_method(self, method):
         """
         Compiles a method
@@ -306,10 +300,9 @@ class LLVMCompiler (collections.namedtuple('Context', [
             return self.compile_function_call(node)
 
     def compile_buildin_method(self, method):
-        arg_val = [self.datamap[name] for name in sorted(method.arguments)]
-        print(method, arg_val)
         return Result(
-                buildin_method(self.bldr, method.target, arg_val),
+                buildin_method(self.bldr, method.code,
+                    [self.datamap[arg] for arg in method.argmap]),
                 self.bldr
                 )
 
@@ -320,15 +313,26 @@ class LLVMCompiler (collections.namedtuple('Context', [
                 (argname, self.datamap[node]) for argname, node in
                     zip(node.function.arguments, node.sources)
                 )
+            method, = node.function.methods
             return internal.compile_method(method)
         else:
             arg_val = [self.datamap[node] for node in node.sources]
-            func = self.backend.compile(node.function)
+            func = self.functions[node]
             node_data = self.bldr.call(func, arg_val)
             return Result(node_data, self.bldr)
 
+    def compile_function(self, function):
+        """ Compiles a function """
+        blocks = self._create_blocks(function.methods)
+        results = [compiler.compile_method(method)
+                    for compiler, method in blocks]
+        return self._join_blocks(results)
+
+
+
+
 from collections import namedtuple
-LLVMType = namedtuple('FLType', ('internal', 'name', 'char'))
+LLVMType = namedtuple('LLVMType', ('internal', 'name', 'char'))
 
 LLVM_TYPE_MAP = {
     'Integer'  : LLVMType(llvmc.Type.int(),'int', 'i'),
@@ -347,6 +351,19 @@ def llvm_const(value):
     type_ = llvm_type(typeset.const(value))
     return getattr(llvmc.Constant, type_.name)(type_.internal, value)
 
+def initial_values(function, llvm_function):
+
+    values = {}
+    for name, llvm_arg in zip(function.arguments, llvm_function.args):
+        llvm_arg.name = name
+        values[name] = llvm_arg
+
+    values.update((name, llvm_const(value))
+            for name, value in function.constants.items())
+
+    return values
+
+
 class LLVMBackend(object):
     """
     This is the LLVM backend for fbml
@@ -361,46 +378,51 @@ class LLVMBackend(object):
         Creates a LLVM function from all of these methods. Assumes that the
         methods have the same argument names.
         """
-        return_type = Evaluator(typeset).evaluate_function(function, types)
-
+        evaluator = Evaluator(typeset)
+        return_type = evaluator.evaluate_function(function, types)
         if not return_type:
-            raise Exception('Function not valid for arguments')
+            raise Exception('Function not valid for arguments',
+                    function, arguments)
+
+        build_functions = { node : self.build_function(depfunc, deptypes)
+                for node, (depfunc, deptypes) in evaluator.depends.items()
+                if depfunc != function and len(depfunc.methods) > 1
+                }
+
 
         arg_types = [llvm_type(arg).internal for arg in types]
+        return_type = llvm_type(return_type).internal
 
-        llvm_function = llvmc.Function.new(
-            self.module,
-            llvmc.Type.function(
-                llvm_type(return_type).internal,
-                arg_types
-                ),
+        func_type = llvmc.Type.function(return_type, arg_types)
+        func_name = \
             function.name + '_' + ''.join(llvm_type(arg).char for arg in types)
-            )
+
+        L.debug("Building: %s %s", func_name, func_type)
+
+        llvm_function = llvmc.Function.new(self.module, func_type, func_name)
 
         self.functions[(function, types)] = llvm_function
+        values = initial_values(function, llvm_function)
+
+        L.debug("Assigned Variables %s", values)
 
         entry = llvm_function.append_basic_block('entry')
         bldr = llvmc.Builder.new(entry)
 
-        values = {}
-        for name, llvm_arg in zip(function.arguments, llvm_function.args):
-            llvm_arg.name = name
-            values[name] = llvm_arg
+        compiler = LLVMCompiler(values, build_functions, bldr)
+        compiler.compile_function(function)
 
-        values.update((name, llvm_const(value))
-                for name, value in function.constants.items())
 
-        compiler = LLVMCompiler(values, self, bldr)
-        result = compiler.compile_methods(function.methods)
-        result.bldr.ret(result.data)
         try:
-            function.verify()
+            llvm_function.verify()
         except llvm.LLVMException as exc:
             L.error(eval(str(exc)).decode(encoding='UTF-8'))
-        return function
+
+        return llvm_function
 
     def compile(self, function, types):
         """ Compiles a FBML function to a LLVM Function """
+        types = tuple(types)
         key = (function, types)
         if key in self.functions:
             return self.functions[key]
