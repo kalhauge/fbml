@@ -3,7 +3,7 @@
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
 """
-from itertools import chain
+from itertools import chain, compress
 from operator import itemgetter
 from collections import namedtuple, deque
 
@@ -33,15 +33,38 @@ class Function(object):
         """ Declares a function """
         return cls(name, arguments, None, None)
 
-    def bound_values(self, args):
-        """ Finds the total bound values when calling with args """
-        return frozendict(
-                chain(
-                    zip(self.arguments, args),
-                    self.constants.items()))
-
     def __str__(self):
         return self.name
+
+class SubFunction(object):
+    """
+    A function only pointing to a subset of the mehtods in
+    the function
+    """
+
+    def __init__(self, function, method_filter):
+        self.super_function = function
+        self.method_filter = tuple(method_filter)
+
+    @property
+    def name(self):
+        """ Proxy function for name """
+        return self.super_function.name
+
+    @property
+    def arguments(self):
+        """ Proxy function for arguments """
+        return self.super_function.arguments
+
+    @property
+    def constants(self):
+        """ Proxy function for constants """
+        return self.super_function.constants
+
+    @property
+    def methods(self):
+        """ Proxy function for methode """
+        return compress(self.super_function.methods, self.method_filter)
 
 class Method (namedtuple('Method', ['guard', 'statement'])):
     """ Method """

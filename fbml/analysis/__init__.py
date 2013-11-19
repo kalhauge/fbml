@@ -12,6 +12,7 @@ import logging
 L = logging.getLogger(__name__)
 
 from fbml import model
+import fbml
 
 
 class Evaluator(object):
@@ -85,4 +86,39 @@ class Evaluator(object):
         """ Evaluates a function using real args """
         return self.evaluate_function(function,
                 tuple(self.valueset.const(arg) for arg in args))
+
+    def clean_function(self, function, args):
+        """
+        Cleans the methods using a valueset analysis, and
+        the signature of the methods.
+        """
+        if not self.evaluate_function(function, args):
+            return FunctionNotValid(function, args)
+        valid_methods = []
+        for method in function.methods:
+            def clean_node(node, sources):
+                """ Sources is the clean nodes """
+                func, arglist = self.depends[node]
+                all_results = lambda m : [self.evaluate_method(m, args)
+                         for args in arglist]
+                reached = [bool(
+                            reduce(
+                                self.valueset.merge,
+                                all_results(m),
+                                self.valueset.EXTREMUM
+                            ))
+                            for m in func.methods]
+
+                return fbml.node(model.SubFunction(func, reached), sources)
+
+            valid_methods.append(
+                    model.Method(
+                        method.guard.visit(clean_node, ),
+                        method.statment.visit(clean_node, )
+                        ))
+
+        return function.define(function.constants, valid_methods)
+
+class FunctionNotValid(Exception):
+    """ Method is not valid """
 
