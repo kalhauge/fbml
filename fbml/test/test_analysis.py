@@ -4,9 +4,7 @@
 
 """
 
-from fbml import optimize
-from fbml.test import MUL_IF_LESS, TAX
-from fbml.buildin import METHODS
+from fbml.test import MUL_IF_LESS, TAX, INCR
 from fbml.analysis import typeset, finiteset, Evaluator
 
 
@@ -65,6 +63,19 @@ def test_taxes_type_set():
     evaluator = Evaluator(typeset)
     value = evaluator.evaluate(TAX, [300100.0])
     assert value == typeset.REAL, str(value)
+
+
+def test_incr_type_set_clean():
+    """ This example tests the cleaning of INCR"""
+
+    evaluator = Evaluator(typeset)
+    function = evaluator.clean_function(INCR, [typeset.INTEGER])
+
+    print(function)
+    assert False
+
+
+
 
 
 

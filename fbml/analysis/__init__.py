@@ -5,7 +5,7 @@
 """
 from collections import OrderedDict
 
-from itertools import starmap, repeat
+from itertools import starmap, repeat, chain
 from functools import reduce
 
 import logging
@@ -52,6 +52,10 @@ class Evaluator(object):
         bound_values.update(zip(function.arguments, arguments))
         return bound_values
 
+    def free_values(self, function):
+        """ Returns the free values of the methods """
+        return chain(function.arguments, function.constants)
+
     def _evaluate_function(self, function, arguments):
         """ internal function for evaluating a function """
         valueset = self.valueset
@@ -87,12 +91,18 @@ class Evaluator(object):
         return self.evaluate_function(function,
                 tuple(self.valueset.const(arg) for arg in args))
 
+
+class Modifier(object):
+
+    def __init__(self, valueset):
+        self.valueset = valueset
+
     def clean_function(self, function, args):
         """
         Cleans the methods using a valueset analysis, and
         the signature of the methods.
         """
-        if not self.evaluate_function(function, args):
+        if not self.evaluate_function(function, tuple(args)):
             return FunctionNotValid(function, args)
         valid_methods = []
         for method in function.methods:
@@ -111,13 +121,16 @@ class Evaluator(object):
 
                 return fbml.node(model.SubFunction(func, reached), sources)
 
+
+            initial_map = {x:x for x in self.free_values(function) }
             valid_methods.append(
                     model.Method(
-                        method.guard.visit(clean_node, ),
-                        method.statment.visit(clean_node, )
+                        method.guard.visit(clean_node, initial_map ),
+                        method.statment.visit(clean_node, initial_map)
                         ))
 
         return function.define(function.constants, valid_methods)
+
 
 class FunctionNotValid(Exception):
     """ Method is not valid """
