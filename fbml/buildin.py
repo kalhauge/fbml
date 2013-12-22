@@ -10,11 +10,7 @@ L = logging.getLogger(__name__)
 
 from fbml.model import BuildInMethod, Function
 
-#boolean = BuildInMethod('boolean')
-#integer = BuildInMethod('integer')
-#real    = BuildInMethod(('value'), 'real')
-
-b_not = BuildInMethod(('a'),'b_not')
+b_not = BuildInMethod(('a'), 'b_not')
 b_and = BuildInMethod(('a', 'b'), 'b_and')
 
 i_neg = BuildInMethod(('a'), 'i_neg')
@@ -22,23 +18,22 @@ i_neg = BuildInMethod(('a'), 'i_neg')
 i_add = BuildInMethod(('a', 'b'), 'i_add')
 i_sub = BuildInMethod(('a', 'b'), 'i_sub')
 i_mul = BuildInMethod(('a', 'b'), 'i_mul')
-i_ge  = BuildInMethod(('a', 'b'), 'i_ge')
-i_lt  = BuildInMethod(('a', 'b'), 'i_lt')
-i_le  = BuildInMethod(('a', 'b'), 'i_le')
-i_gt  = BuildInMethod(('a', 'b'), 'i_gt')
-i_eq  = BuildInMethod(('a', 'b'), 'i_eq')
+i_ge = BuildInMethod(('a', 'b'), 'i_ge')
+i_lt = BuildInMethod(('a', 'b'), 'i_lt')
+i_le = BuildInMethod(('a', 'b'), 'i_le')
+i_gt = BuildInMethod(('a', 'b'), 'i_gt')
+i_eq = BuildInMethod(('a', 'b'), 'i_eq')
 
 r_neg = BuildInMethod(('a'), 'r_neg')
 
 r_add = BuildInMethod(('a', 'b'), 'r_add')
 r_sub = BuildInMethod(('a', 'b'), 'r_sub')
 r_mul = BuildInMethod(('a', 'b'), 'r_mul')
-r_ge  = BuildInMethod(('a', 'b'), 'r_ge')
-r_lt  = BuildInMethod(('a', 'b'), 'r_lt')
-r_le  = BuildInMethod(('a', 'b'), 'r_le')
-r_gt  = BuildInMethod(('a', 'b'), 'r_gt')
-r_eq  = BuildInMethod(('a', 'b'), 'r_eq')
-
+r_ge = BuildInMethod(('a', 'b'), 'r_ge')
+r_lt = BuildInMethod(('a', 'b'), 'r_lt')
+r_le = BuildInMethod(('a', 'b'), 'r_le')
+r_gt = BuildInMethod(('a', 'b'), 'r_gt')
+r_eq = BuildInMethod(('a', 'b'), 'r_eq')
 
 load = BuildInMethod(('a'), 'load')
 
@@ -57,33 +52,25 @@ le = Function('le',     ('a', 'b'), {}, [i_le, r_le])
 gt = Function('gt',     ('a', 'b'), {}, [i_gt, r_gt])
 eq = Function('eq',     ('a', 'b'), {}, [i_eq, r_eq])
 
-
-
 METHODS = (
     i_neg,
     i_add,
     i_sub,
     i_mul,
-    i_ge ,
-    i_lt ,
-    i_le ,
-    i_gt ,
-    i_eq ,
+    i_ge,
+    i_lt,
+    i_le,
+    i_gt,
+    i_eq,
     r_neg,
     r_add,
     r_sub,
     r_mul,
-    r_ge ,
-    r_lt ,
-    r_le ,
-    r_gt ,
-    r_eq ,
+    r_ge,
+    r_lt,
+    r_le,
+    r_gt,
+    r_eq,
     b_not,
     b_and,
-#    boolean,
-#    integer,
-#    real,
 )
-
-
-

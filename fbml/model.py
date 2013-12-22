@@ -3,20 +3,30 @@
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
 """
-from itertools import chain, compress
+from itertools import compress
 from operator import itemgetter
 from collections import namedtuple, deque
 
 import logging
 L = logging.getLogger(__name__)
 
-from fbml.utils import frozendict
 
 class Function(object):
     """
     The overall function
-    """
 
+    :param name:
+        The name of the function
+
+    :param arguments:
+        The named arguments
+
+    :param constants:
+        Constants, used in the functions.
+
+    :param methods:
+        Methods.
+    """
     def __init__(self, name, arguments, constants, methods):
         self.name = name
         self.arguments = arguments
@@ -36,12 +46,12 @@ class Function(object):
     def __str__(self):
         return self.name
 
+
 class SubFunction(object):
     """
     A function only pointing to a subset of the mehtods in
     the function
     """
-
     def __init__(self, function, method_filter):
         self.super_function = function
         self.method_filter = tuple(method_filter)
@@ -66,19 +76,21 @@ class SubFunction(object):
         """ Proxy function for methode """
         return compress(self.super_function.methods, self.method_filter)
 
+
 class Method (namedtuple('Method', ['guard', 'statement'])):
     """ Method """
 
     is_buildin = False
+
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
     """ BuildInMethod """
 
     is_buildin = True
 
+
 class Node (namedtuple('Node', ['function', 'sources'])):
     """ Node """
-
     def reachable_nodes(self):
         """
         Calculates reacable nodes
@@ -97,7 +109,7 @@ class Node (namedtuple('Node', ['function', 'sources'])):
         """
         Return the nodes in a partial ordering
         """
-        node_numbers = {self : 0}
+        node_numbers = {self: 0}
 
         visitors = deque((self,))
         while visitors:
@@ -108,7 +120,7 @@ class Node (namedtuple('Node', ['function', 'sources'])):
                 visitors.extendleft(next_vistor.sources)
 
         return [node for node, index in
-                    sorted(node_numbers.items(), key=itemgetter(1)) ]
+                sorted(node_numbers.items(), key=itemgetter(1))]
 
     def visit(self, visitor, initial):
         """
@@ -126,7 +138,6 @@ class Node (namedtuple('Node', ['function', 'sources'])):
         """
         return self.visit_mapping(visitor, initial)[self]
 
-
     def visit_mapping(self, visitor, initial):
         """ Returns the internal mapping for the visitor """
         mapping = dict(initial)
@@ -141,43 +152,8 @@ class Node (namedtuple('Node', ['function', 'sources'])):
 
     def __repr__(self):
         return 'Node(%s, %s)' % self
-#
-#    def pformat(self, indent=0):
-#        """
-#        returns a pretty fromatted str
-#        """
-#        newline = lambda ind: '\n' + '  '*ind
-#
-#        def pformat_list(str_list, indent, paran = ('[', ']')):
-#            """ pretty formats a list """
-#            str_list = [s for s in str_list if s]
-#            if str_list:
-#                if len(str_list) == 1:
-#                    return_str = paran[0] + str_list[0] + paran[1]
-#                else:
-#                    return_str = (paran[0] +
-#                        newline(indent) +
-#                        (',' + newline(indent)).join(str_list) +
-#                        newline(indent) +
-#                        paran[1])
-#            else:
-#                return_str = ''
-#            return return_str
-#
-#        args = [
-#            pformat_list(
-#                [str(self.function)] +
-#                [s.pformat(indent + 3) for s in self.sources
-#                    if isinstance(s, Node)],
-#                indent + 2),
-#            ]
-#
-#        return 'node' + pformat_list(args, indent+1, ('(',')'))
-
 
     @property
-    def code (self):
+    def code(self):
         """ returns the code of the node """
         return hex(id(self))
-
-
