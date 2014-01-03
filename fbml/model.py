@@ -2,8 +2,15 @@
 .. currentmodule:: fbml.model
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
+
+:class:`Function`
+=================
+
+The function is a holder of bound_values, ei. constants, and a set of methods.
+
+
 """
-from itertools import compress, chain
+from itertools import chain
 from operator import itemgetter
 from collections import namedtuple, deque
 
@@ -11,118 +18,102 @@ import logging
 L = logging.getLogger(__name__)
 
 
-class Function(object):
-    """
-    The overall function
+class Function(namedtuple('Function', ['bound_values', 'methods'])):
 
-    :param name:
-        The name of the function
-
-    :param arguments:
-        The named arguments
-
-    :param constants:
-        Constants, used in the functions.
-
-    :param methods:
-        Methods.
-    """
-    def __init__(self, name, arguments, constants, methods):
-        self.name = name
-        self.arguments = arguments
-        self.constants = constants
-        self.methods = methods
-
-    def define(self, constants, methods):
-        """ Defines the function """
-        self.constants = constants
-        self.methods = methods
-
-    @classmethod
-    def declare(cls, name, arguments):
-        """ Declares a function """
-        return cls(name, arguments, None, None)
-
-    def free_values(function):
-        """ Returns the free values of the methods """
-        return chain(function.arguments, function.constants)
-
-    def bind_values(self, arguments, const=lambda x: x):
-        """ Bind values of a function
-
-        :param arguments:
-            The arguments containing
-
-        :param const:
-            A function that maps a value to a constant.
+    def free_variables(self):
         """
-        bound_values = {k: const(v) for k, v in self.constants.items()}
-        bound_values.update(zip(self.arguments, arguments))
-        return bound_values
+        Free variables is the variables that needs to be bound to the function
+        for all of its methods to exceute. Calculated by finding the variables
+        used in all of the methods, and removing the bound_values from the
+        function.
 
-    def evaluate(self, arguments, analysis):
-        bound_values = self.bind_values(arguments, analysis.const)
+        :param self:
+            The function that we want to know the free variables of.
+
+        :returns: The free variables of a function.
+        """
+
+        free_variables = set()
+        for method in self.methods:
+            free_variables.extend(method.variables)
+        return free_variables - set(self.bound_values)
+
+    def bind_variables(self, arguments):
+        """
+        Returns an dictionary with all the needed values bound
+        """
+        bound_vars = dict(chain(arguments, self.bound_values))
+        # Assert might not be nesseary
+        assert self.free_variables().issubset(bound_vars)
+        return bound_vars
+
+    def evaluate(self, analysis, arguments):
+        """
+        Returns an function able to evaluate the Function
+        """
+        initial = self.bind_variables(arguments)
         return reduce(
-            (lambda method, result:
-                analysis.merge(
-                    method.evaluate(arguments, bound_values),
-                    result
-                )),
-            self.methods,
+            analysis.merge,
+            (method.evaluate(analysis, initial) for method in self.methods),
             analysis.EXTREMUM
         )
 
-    def __str__(self):
-        return self.name
 
+class Method(namedtuple('Method', ['guard', 'statement'])):
 
-class SubFunction(object):
-    """
-    A function only pointing to a subset of the mehtods in
-    the function
-    """
-    def __init__(self, function, method_filter):
-        self.super_function = function
-        self.method_filter = tuple(method_filter)
+    def variables(self):
+        """
+        :param self:
+            the method we want to find the variables from.
 
-    @property
-    def name(self):
-        """ Proxy function for name """
-        return self.super_function.name
+        :returns: the variables used by the method.
+        """
+        return set(
+            node.function for node in chain(
+                self.guard.precedes(),
+                self.statement.precedes()
+            ) if not node.sources
+        )
 
-    @property
-    def arguments(self):
-        """ Proxy function for arguments """
-        return self.super_function.arguments
-
-    @property
-    def constants(self):
-        """ Proxy function for constants """
-        return self.super_function.constants
-
-    @property
-    def methods(self):
-        """ Proxy function for methode """
-        return compress(self.super_function.methods, self.method_filter)
-
-
-class Method (namedtuple('Method', ['guard', 'statement'])):
-    """ Method """
-
-    is_buildin = False
+    def evaluate(self, analysis, initial):
+        assert self.variables().issubset(initial)
+        test_value = self.guard.evaluate(analysis, initial)
+        return self.statement.evaluate(analysis, initial)\
+            if analysis.allow(test_value) else analysis.EXTREMUM
 
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
-    """ BuildInMethod """
 
-    is_buildin = True
+    def variables(self):
+        """
+        :param self:
+            the method we want to find the variables from.
+
+        :returns: the variables used by the method.
+        """
+        return set(self.argmap)
+
+    def evaluate(self, analysis, initial):
+        return analysis.apply(
+            self,
+            (initial[argname] for argname in self.argmap)
+        )
 
 
 class Node (namedtuple('Node', ['function', 'sources'])):
     """ Node """
-    def reachable_nodes(self):
+    def precedes(self):
         """
-        Calculates reacable nodes
+        Returns the set of nodes that precedes the node. A node presedes an
+        other node if there is an direct path from the second node to the first
+        navigating thru the sources of the node.
+
+        :param self:
+            The node from wich to evaluate the dominating set of
+            nodes
+
+        :returns:
+            all the nodes that precedes the node
         """
         visitors = deque((self,))
         nodes = set()
@@ -134,9 +125,10 @@ class Node (namedtuple('Node', ['function', 'sources'])):
 
         return nodes
 
-    def nodes_in_order(self):
+    def precedes_in_order(self):
         """
-        Return the nodes in a partial ordering
+        Like :func:`precedes`, but returns the preceding nodes in an partial
+        orderd list
         """
         node_numbers = {self: 0}
 
@@ -150,6 +142,12 @@ class Node (namedtuple('Node', ['function', 'sources'])):
 
         return [node for node, index in
                 sorted(node_numbers.items(), key=itemgetter(1))]
+
+    def evaluate(self, analysis, initial):
+        return self.visit(
+            lambda node, sources: node.function.evaluate(analysis, sources),
+            initial
+        )
 
     def visit(self, visitor, initial):
         """
@@ -165,9 +163,9 @@ class Node (namedtuple('Node', ['function', 'sources'])):
         :returns:
             Whatever the visitor returns
         """
-        return self.visit_mapping(visitor, initial)[self]
+        return self.visit_all(visitor, initial)[self]
 
-    def visit_mapping(self, visitor, initial):
+    def visit_all(self, visitor, initial):
         """ Returns the internal mapping for the visitor """
         mapping = dict(initial)
         for visit_node in reversed(self.nodes_in_order()):
