@@ -3,7 +3,7 @@
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
 """
-from itertools import compress
+from itertools import compress, chain
 from operator import itemgetter
 from collections import namedtuple, deque
 
@@ -42,6 +42,35 @@ class Function(object):
     def declare(cls, name, arguments):
         """ Declares a function """
         return cls(name, arguments, None, None)
+
+    def free_values(function):
+        """ Returns the free values of the methods """
+        return chain(function.arguments, function.constants)
+
+    def bind_values(self, arguments, const=lambda x: x):
+        """ Bind values of a function
+
+        :param arguments:
+            The arguments containing
+
+        :param const:
+            A function that maps a value to a constant.
+        """
+        bound_values = {k: const(v) for k, v in self.constants.items()}
+        bound_values.update(zip(self.arguments, arguments))
+        return bound_values
+
+    def evaluate(self, arguments, analysis):
+        bound_values = self.bind_values(arguments, analysis.const)
+        return reduce(
+            (lambda method, result:
+                analysis.merge(
+                    method.evaluate(arguments, bound_values),
+                    result
+                )),
+            self.methods,
+            analysis.EXTREMUM
+        )
 
     def __str__(self):
         return self.name

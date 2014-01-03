@@ -14,14 +14,69 @@ L = logging.getLogger(__name__)
 from fbml import model
 import fbml
 
+def default(obj, if_none):
+    if not obj:
+        return if_none
+    else:
+        return obj
+
+def evaluator(analysis):
+    """
+    This function is a closure over that creates a function using a class.
+    Given a analysis an evaluator is created::
+
+        (Analysis) -> (Function x Arguments)
+                   -> P(Function x Arguments x Results)
+
+    """
+
+    def evaluate_method(method, initial):
+        """ Evalutates a method """
+        if isinstance(method, model.Method):
+            test_value = evaluate_lattice(method.guard, initial)
+            if analysis.allow(test_value):
+                value = evaluate_lattice(method.statement, initial)
+            else:
+                value = analysis.EXTREMUM
+            return value
+        else:
+            return analysis.apply(method, initial.values())
+
+    def evaluate(function, arguments, resultmap=None):
+        """
+        Evaluate a function and returns a dictionary containing all the
+        function result mappings.
+
+            Function x Args x ResultMap -> ResultMap
+
+        """
+        resultmap = default(resultmap, {})
+        try:
+            return dynamic[(function, arguments)]
+        except KeyError:
+            dynamic[(function, arguments)] = analysis.EXTREMUM
+            while True:
+                bound_values = function.bind_values(arguments, values.const)
+                method_calls = zip(function.methods, repeat(bound_values))
+                values = starmap(evaluate_method, method_calls)
+                new = reduce(analysis.merge, values, analysis.EXTREMUM)
+                if dynamic[(function, arguments)] == new:
+                    break
+                else:
+                    dynamic[(function, arguments)] = new
+            return new
+
+    return (lambda function, arguments:
+        evaluate(function, tuple(self.analysis.const(arg) for arg in args))
+    )
+
 
 class Evaluator(object):
     """
-    The evaluator can evaluate a function using some basic
-    methods.
+    The evaluator can evaluate a function using some basic methods.
 
-    :param eval_method:
-        a function that evaluates a method.
+    :param valueset:
+        The valueset used to perform the analysis
 
     """
 
