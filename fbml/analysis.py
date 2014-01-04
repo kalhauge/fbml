@@ -20,7 +20,7 @@ def all_is(superset, returnset, elseset):
             else elseset)
 
 
-def if_subset(cls, typeset, thenset, elseset):
+def if_subset(typeset, thenset, elseset):
     """
     Creates a function able to test if a tuple containing a single
     set which is a subset of of the typeset argumment.
@@ -140,24 +140,6 @@ class TypeSet (object):
         'integer':  if_subset(INTEGER, BOOLEAN, EXTREMUM),
         'real':     if_subset(REAL, BOOLEAN, EXTREMUM)
     }
-
-    @classmethod
-    def all_is(superset, returnset, elseset):
-        """
-        Tests if all arguments is a subset of the superset, if it is returnset
-        is returned else the EXTREMUM is returned.
-        """
-        return (lambda args: returnset
-                if all(superset >= arg for arg in args)
-                else elseset)
-
-    @classmethod
-    def if_subset(cls, typeset, thenset, elseset):
-        """
-        Creates a function able to test if a tuple containing a single
-        set which is a subset of of the typeset argumment.
-        """
-        return lambda other: thenset if other[0] >= typeset else elseset
 
     @classmethod
     def merge(cls, first, other):
