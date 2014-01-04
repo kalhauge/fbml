@@ -9,7 +9,7 @@ from fbml.analysis import typeset
 
 def compile_function(function, args):
     """ Compiles a function using LLVM """
-    cleaned_function = optimize.clean_function(function, args, typeset)
+    function = function.clean(typeset, args)
     back = llvm_.LLVMBackend()
     llvm_function = back.compile(function, args)
     print(llvm_function)
@@ -18,7 +18,7 @@ def compile_function(function, args):
 
 def test_increment():
     """ Test INCR """
-    result = compile_function(test.INCR, (typeset.INTEGER,))
+    result = compile_function(test.INCR, {'number': typeset.INTEGER})
     assert False, str(result)
     #assert str(result) == '', str(result)
 

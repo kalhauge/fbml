@@ -5,7 +5,8 @@
 """
 
 from fbml.test import MUL_IF_LESS, INCR
-from fbml.analysis import typeset, finiteset
+from fbml.analysis import TypeSet, FiniteSet
+from fbml import buildin
 
 
 def test_multiply_finite_set():
@@ -27,6 +28,14 @@ def test_multiply_type_set():
 
     value = MUL_IF_LESS.evaluate(typeset, {'number': 2.0})
     assert value == typeset.EXTREMUM, str(value)
+
+
+def test_incr_type_set_clean():
+    """ This example tests the cleaning of INCR"""
+    function = INCR.clean(typeset, {'number': 10})
+
+    point_of_interest = function.methods[0].statement.function.methods
+    assert point_of_interest == [buildin.i_add]
 
 
 #def test_taxes_finite_set():
@@ -64,11 +73,3 @@ def test_multiply_type_set():
 #    value = evaluator.evaluate(TAX, [300100.0])
 #    assert value == typeset.REAL, str(value)
 #
-
-#def test_incr_type_set_clean():
-#    """ This example tests the cleaning of INCR"""
-#    evaluator = Evaluator(typeset)
-#    function = evaluator.clean_function(INCR, [typeset.INTEGER])
-#
-#    print(function)
-#    assert False

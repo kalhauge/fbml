@@ -13,7 +13,7 @@ INCR = Function(
     [
         Method(
             node('test'),
-            node(buildin.add, {'a': node('a'), 'b': node('value')})
+            node(buildin.add, {'a': node('number'), 'b': node('value')})
         )
     ]
 )

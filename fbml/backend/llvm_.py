@@ -6,9 +6,7 @@ A simple backend written in llvm
 
 """
 #pylint: disable = E1101
-from copy import copy
 from functools import reduce
-from itertools import starmap
 from operator import itemgetter
 import collections
 import llvm
@@ -214,7 +212,7 @@ class LLVMCompiler (collections.namedtuple('Context', [
         creates a tuples of blocks
         """
         bldr = self.bldr
-        method, *rest = methods
+        method, rest = methods[0], methods[1:]
         if rest:
 
             function = bldr.basic_block.function
@@ -240,7 +238,7 @@ class LLVMCompiler (collections.namedtuple('Context', [
         """
         Joins the results from the blocks
         """
-        succ_result, *rest = results
+        succ_result, rest = results[0], results[1:]
         if rest:
             fail_result = LLVMCompiler._join_blocks(rest)
 
@@ -326,7 +324,7 @@ class LLVMCompiler (collections.namedtuple('Context', [
             method, = node.function.methods
             return internal.compile_method(method)
         else:
-            arg_val = [self.datamap[node] for node in node.sources]
+            arg_val = [self.datamap[n] for n in node.sources]
             func = self.functions[node]
             node_data = self.bldr.call(func, arg_val)
             return Result(node_data, self.bldr)
@@ -390,11 +388,11 @@ class LLVMBackend(object):
         Creates a LLVM function from all of these methods. Assumes that the
         methods have the same argument names.
         """
-        return_type = function.evaluate(typeset, typeset)
+        return_type = function.evaluate(typeset, types)
         if not return_type:
             raise Exception(
                 'Function not valid for arguments',
-                function, arguments
+                function, types
             )
 
         build_functions = {
@@ -434,8 +432,10 @@ class LLVMBackend(object):
 
     def compile(self, function, types):
         """ Compiles a FBML function to a LLVM Function """
-        types = tuple(types)
-        key = (function, types)
+        type_id = tuple(
+            type_ for name, type_ in sorted(types.items(), key=itemgetter(1))
+        )
+        key = (function, type_id)
         if key in self.functions:
             return self.functions[key]
         else:

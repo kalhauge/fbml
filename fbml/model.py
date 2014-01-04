@@ -48,24 +48,38 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
         assert self.free_variables().issubset(bound_vars)
         return bound_vars
 
-    def __hash__(self):
-        return id(self)
-
     def evaluate(self, analysis, arguments):
         """
         Returns an function able to evaluate the Function
         """
-        initial = self.bind_variables(arguments)
         initial = {
             name: analysis.transform(value) for name, value in
-            initial.items()
+            self.bind_variables(arguments).items()
         }
-
         return reduce(
             analysis.merge,
             (method.evaluate(analysis, initial) for method in self.methods),
             analysis.EXTREMUM
         )
+
+    def clean(self, analysis, arguments):
+        initial = {
+            name: analysis.transform(value) for name, value in
+            self.bind_variables(arguments).items()
+        }
+        cleaned_methods = (
+            method.clean(analysis, initial) for method in self.methods
+        )
+        good_methods = [method for method in cleaned_methods if method]
+        return Function(self.bound_values, good_methods)
+
+    def __hash__(self):
+        return id(self)
+
+    def __repr__(self):
+        return 'Function(\n    %s,\n    %s\n)' % (
+            self.bound_values,
+            str(self.methods).replace('\n', '\n    '))
 
 
 class Method(namedtuple('Method', ['guard', 'statement'])):
@@ -78,10 +92,10 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
         :returns: the variables used by the method.
         """
         return set(
-            node.function for node in chain(
+            node for node in chain(
                 self.guard.precedes(),
                 self.statement.precedes()
-            ) if not node.sources
+            ) if not isinstance(node, Node)
         )
 
     def evaluate(self, analysis, initial):
@@ -89,6 +103,18 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
         test_value = self.guard.evaluate(analysis, initial)
         return self.statement.evaluate(analysis, initial)\
             if analysis.allow(test_value) else analysis.EXTREMUM
+
+    def clean(self, analysis, initial):
+        return Method(
+            self.guard.clean(analysis, initial)[1],
+            self.statement.clean(analysis, initial)[1]
+        )
+
+    def __repr__(self):
+        return "Method(\n    %s,\n    %s\n)" % (
+            str(self.guard).replace('\n', '\n    '),
+            str(self.statement).replace('\n', '\n    ')
+        )
 
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
@@ -108,9 +134,17 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
             tuple(initial[argname] for argname in self.argmap)
         )
 
+    def clean(self, analysis, initial):
+        return self if analysis.apply(
+            self,
+            tuple(initial[argname] for argname in self.argmap)
+        ) else None
+
 
 class Node (namedtuple('Node', ['function', 'sources', 'names'])):
-    """ Node """
+    """ Node , if the function is load, then the sources are
+        allowe to be a string
+    """
 
     def precedes(self):
         """
@@ -140,6 +174,13 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         return [node for node, index in
                 sorted(node_numbers.items(), key=itemgetter(1))]
 
+    def variabels(self):
+        precedence = self.precedes()
+        sources = reduce(
+            set.union, (node.sources for node in precedence), set()
+        )
+        return sources - precedence
+
     def evaluate(self, analysis, initial):
         return self.visit(
             lambda node, sources: node.function.evaluate(
@@ -148,6 +189,20 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
             ),
             initial
         )
+
+    def clean(self, analysis, initial):
+        mapping = {
+            name: (val, name) for name, val in initial.items()
+        }
+
+        def cleanup(node, sources):
+            results, nodes = zip(*sources)
+            values = dict(zip(node.names, results))
+            new_function = node.function.clean(analysis, values)
+            result = node.function.evaluate(analysis, values)
+            return (result, Node(new_function, nodes, node.names))
+
+        return self.visit(cleanup, mapping)
 
     def visit(self, visitor, initial):
         """
@@ -178,7 +233,15 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         return mapping
 
     def __repr__(self):
-        return 'Node(%s, %s, %s)' % self
+        if self.sources:
+            return 'Node(\n    %s,\n    %s,\n    %s\n)' % (
+                str(self.function).replace('\n', '\n    '),
+                ('(\n    ' + ',\n    '.join(
+                    repr(source) for source in self.sources
+                ) + '\n)').replace('\n', '\n    '),
+                self.names)
+        else:
+            return 'Node(%r, None, None)' % (self.function,)
 
     @property
     def code(self):
