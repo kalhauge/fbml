@@ -13,6 +13,7 @@ The function is a holder of bound_values, ei. constants, and a set of methods.
 from itertools import chain
 from operator import itemgetter
 from collections import namedtuple, deque
+from functools import reduce
 
 import logging
 L = logging.getLogger(__name__)
@@ -35,23 +36,31 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
 
         free_variables = set()
         for method in self.methods:
-            free_variables.extend(method.variables)
+            free_variables.union(method.variables())
         return free_variables - set(self.bound_values)
 
     def bind_variables(self, arguments):
         """
         Returns an dictionary with all the needed values bound
         """
-        bound_vars = dict(chain(arguments, self.bound_values))
+        bound_vars = dict(chain(arguments.items(), self.bound_values.items()))
         # Assert might not be nesseary
         assert self.free_variables().issubset(bound_vars)
         return bound_vars
+
+    def __hash__(self):
+        return id(self)
 
     def evaluate(self, analysis, arguments):
         """
         Returns an function able to evaluate the Function
         """
         initial = self.bind_variables(arguments)
+        initial = {
+            name: analysis.transform(value) for name, value in
+            initial.items()
+        }
+
         return reduce(
             analysis.merge,
             (method.evaluate(analysis, initial) for method in self.methods),
@@ -96,17 +105,20 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
     def evaluate(self, analysis, initial):
         return analysis.apply(
             self,
-            (initial[argname] for argname in self.argmap)
+            tuple(initial[argname] for argname in self.argmap)
         )
 
 
-class Node (namedtuple('Node', ['function', 'sources'])):
+class Node (namedtuple('Node', ['function', 'sources', 'names'])):
     """ Node """
+
     def precedes(self):
         """
         Returns the set of nodes that precedes the node. A node presedes an
         other node if there is an direct path from the second node to the first
         navigating thru the sources of the node.
+
+        The nodes are returned in order.
 
         :param self:
             The node from wich to evaluate the dominating set of
@@ -114,21 +126,6 @@ class Node (namedtuple('Node', ['function', 'sources'])):
 
         :returns:
             all the nodes that precedes the node
-        """
-        visitors = deque((self,))
-        nodes = set()
-
-        while visitors:
-            next_vistor = visitors.pop()
-            nodes.add(next_vistor.sources)
-            visitors.extendleft(next_vistor.sources)
-
-        return nodes
-
-    def precedes_in_order(self):
-        """
-        Like :func:`precedes`, but returns the preceding nodes in an partial
-        orderd list
         """
         node_numbers = {self: 0}
 
@@ -145,7 +142,10 @@ class Node (namedtuple('Node', ['function', 'sources'])):
 
     def evaluate(self, analysis, initial):
         return self.visit(
-            lambda node, sources: node.function.evaluate(analysis, sources),
+            lambda node, sources: node.function.evaluate(
+                analysis,
+                dict(zip(node.names, sources))
+            ),
             initial
         )
 
@@ -168,7 +168,7 @@ class Node (namedtuple('Node', ['function', 'sources'])):
     def visit_all(self, visitor, initial):
         """ Returns the internal mapping for the visitor """
         mapping = dict(initial)
-        for visit_node in reversed(self.nodes_in_order()):
+        for visit_node in reversed(self.precedes()):
             try:
                 sources = tuple(mapping[s] for s in visit_node.sources)
                 mapping[visit_node] = visitor(visit_node, sources)
@@ -178,7 +178,7 @@ class Node (namedtuple('Node', ['function', 'sources'])):
         return mapping
 
     def __repr__(self):
-        return 'Node(%s, %s)' % self
+        return 'Node(%s, %s, %s)' % self
 
     @property
     def code(self):

@@ -13,7 +13,7 @@ INCR = Function(
     [
         Method(
             node('test'),
-            node(buildin.add, [node('a'), node('value')])
+            node(buildin.add, {'a': node('a'), 'b': node('value')})
         )
     ]
 )
@@ -22,8 +22,8 @@ MUL_IF_LESS = Function(
     {'x1': 10},
     [
         Method(
-            node(buildin.le,  [node('number'), node('x1')]),
-            node(buildin.mul, [node('number'), node('x1')])
+            node(buildin.le,  {'a': node('number'), 'b': node('x1')}),
+            node(buildin.mul, {'a': node('number'), 'b': node('x1')})
         )
     ]
 )

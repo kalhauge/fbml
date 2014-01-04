@@ -17,38 +17,36 @@ import llvm.core as llvmc
 import logging
 L = logging.getLogger(__name__)
 
-from fbml.analysis import typeset, Evaluator
+from fbml.analysis import typeset
 
 BUILDIN_MAP = {
-    'r_add'     : 'fadd',
-    'r_sub'     : 'fsub',
-    'r_mul'     : 'fmul',
-    'r_neg'     : 'fneg',
-    'r_div'     : 'fdiv',
+    'r_add': 'fadd',
+    'r_sub': 'fsub',
+    'r_mul': 'fmul',
+    'r_neg': 'fneg',
+    'r_div': 'fdiv',
 
-    'r_lt'      : llvmc.FCMP_ULT,
-    'r_gt'      : llvmc.FCMP_UGT,
-    'r_le'      : llvmc.FCMP_ULE,
-    'r_ge'      : llvmc.FCMP_UGE,
-    'r_eq'      : llvmc.FCMP_UEQ,
+    'r_lt':  llvmc.FCMP_ULT,
+    'r_gt':  llvmc.FCMP_UGT,
+    'r_le':  llvmc.FCMP_ULE,
+    'r_ge':  llvmc.FCMP_UGE,
+    'r_eq':  llvmc.FCMP_UEQ,
 
-    'i_add'     : 'add',
-    'i_sub'     : 'sub',
-    'i_mul'     : 'mul',
-    'i_neg'     : 'neg',
+    'i_add': 'add',
+    'i_sub': 'sub',
+    'i_mul': 'mul',
+    'i_neg': 'neg',
 
-    'i_lt'      : llvmc.ICMP_SLT,
-    'i_gt'      : llvmc.ICMP_SGT,
-    'i_le'      : llvmc.ICMP_SLE,
-    'i_ge'      : llvmc.ICMP_SGE,
-    'i_eq'      : llvmc.ICMP_EQ,
+    'i_lt':  llvmc.ICMP_SLT,
+    'i_gt':  llvmc.ICMP_SGT,
+    'i_le':  llvmc.ICMP_SLE,
+    'i_ge':  llvmc.ICMP_SGE,
+    'i_eq':  llvmc.ICMP_EQ,
 
-    'and'       : 'and_',
+    'and':   'and_',
 }
 
-REAL_MAP = {
-
-    }
+REAL_MAP = {}
 
 INTEGER_CMP = {
     llvmc.ICMP_SLT,
@@ -56,7 +54,7 @@ INTEGER_CMP = {
     llvmc.ICMP_SLE,
     llvmc.ICMP_SGE,
     llvmc.ICMP_EQ,
-    }
+}
 
 REAL_CMP = {
     llvmc.FCMP_ULT,
@@ -64,7 +62,8 @@ REAL_CMP = {
     llvmc.FCMP_ULE,
     llvmc.FCMP_UGE,
     llvmc.FCMP_UEQ,
-    }
+}
+
 
 def buildin_method(bldr, name, args):
     """
@@ -97,8 +96,9 @@ def buildin_method(bldr, name, args):
                 assert False, 'Real comparation'
                 return bldr.fcmp(funcname, lhs, rhs)
             else:
-                assert not funcname.startswith('f'), "{}({},{})".format(
-                        funcname, lhs, rhs)
+                assert not funcname.startswith('f'), "{}({}, {})".format(
+                    funcname, lhs, rhs
+                )
                 return getattr(bldr, funcname)(lhs, rhs)
 
 #    elif name in TYPE_MAP:
@@ -110,10 +110,11 @@ def buildin_method(bldr, name, args):
 
 
 TYPE_MAP = {
-    'Integer'  : (llvmc.Type.int(),'int'),
-    'Real'     : (llvmc.Type.double(),'real'),
-    'Boolean'  : (llvmc.Type.int(1),'int'),
+    'Integer': (llvmc.Type.int(), 'int'),
+    'Real':    (llvmc.Type.double(), 'real'),
+    'Boolean': (llvmc.Type.int(1), 'int'),
 }
+
 
 def constant_from_value(valueset):
     """
@@ -126,6 +127,7 @@ def constant_from_value(valueset):
     llvm_type, type_name = TYPE_MAP[typename_of_value(val)]
     return getattr(llvmc.Constant, type_name)(llvm_type, val)
 
+
 def type_of_value(valueset):
     """
     :param valueset:
@@ -136,6 +138,7 @@ def type_of_value(valueset):
     """
     val, = valueset
     return TYPE_MAP[val][0]
+
 
 def typename_of_value(val):
     """
@@ -150,8 +153,12 @@ def typename_of_value(val):
         typename = 'Integer'
     else:
         typename = 'Integer'
-        L.warning('Called typename_of_value on %s, returns "%s"', val, typename)
+        L.warning(
+            'Called typename_of_value on %s, returns "%s"',
+            val, typename
+        )
     return typename
+
 
 def order_arguments(arguments):
     """
@@ -162,19 +169,19 @@ def order_arguments(arguments):
 Result = collections.namedtuple('Result', [
     'data',
     'bldr',
-    ])
+])
 
 Block = collections.namedtuple('Block', [
     'context',
     'method',
-    ])
+])
 
 
 class LLVMCompiler (collections.namedtuple('Context', [
     'datamap',
     'functions',
     'bldr',
-    ])):
+])):
 
     """
     Context is an immutable class used when compiling
@@ -222,11 +229,11 @@ class LLVMCompiler (collections.namedtuple('Context', [
             succ_context = self.with_builder(llvmc.Builder.new(succ))
             fail_context = self.with_builder(llvmc.Builder.new(fail))
 
-            return fail_context._create_blocks(rest,
-                    results + ( Block(succ_context, method), )
-                    )
+            return fail_context._create_blocks(
+                rest, results + (Block(succ_context, method),)
+            )
         else:
-            return results + ( Block(self, method), )
+            return results + (Block(self, method), )
 
     @staticmethod
     def _join_blocks(results):
@@ -239,8 +246,7 @@ class LLVMCompiler (collections.namedtuple('Context', [
 
             function = succ_result.bldr.basic_block.function
 
-            merge = function.append_basic_block(
-                     'merg.' + str(len(rest)))
+            merge = function.append_basic_block('merg.' + str(len(rest)))
 
             fail_result.bldr.branch(merge)
             succ_result.bldr.branch(merge)
@@ -282,37 +288,41 @@ class LLVMCompiler (collections.namedtuple('Context', [
             internal.datamap[node] = result.data
             return internal
 
-        internal = reduce(reduce_opr,
-                reversed(basenode.nodes_in_order()),
-                self)
+        internal = reduce(
+            reduce_opr,
+            reversed(basenode.nodes_in_order()), self
+        )
         return Result(internal.datamap[basenode], internal.bldr)
-
 
     def compile_node(self, node):
         if not node.sources:
             try:
                 return Result(self.datamap[node.name], self.bldr)
             except KeyError:
-                raise RuntimeError('Could not copile node, because {name}'
-                        ' where not computed in {datamap}'.format(
-                            name = node.name, datamap = self.datamap))
+                raise RuntimeError(
+                    'Could not copile node, because {name}'
+                    ' where not computed in {datamap}'.format(
+                        name=node.name, datamap=self.datamap
+                    ))
         else:
             return self.compile_function_call(node)
 
     def compile_buildin_method(self, method):
         return Result(
-                buildin_method(self.bldr, method.code,
-                    [self.datamap[arg] for arg in method.argmap]),
-                self.bldr
-                )
+            buildin_method(
+                self.bldr, method.code,
+                [self.datamap[arg] for arg in method.argmap]
+            ),
+            self.bldr
+        )
 
     def compile_function_call(self, node):
         if len(node.function.methods) == 1:
             # Inline function
             internal = self.update_datamap(
                 (argname, self.datamap[node]) for argname, node in
-                    zip(node.function.arguments, node.sources)
-                )
+                zip(node.function.arguments, node.sources)
+            )
             method, = node.function.methods
             return internal.compile_method(method)
         else:
@@ -324,21 +334,21 @@ class LLVMCompiler (collections.namedtuple('Context', [
     def compile_function(self, function):
         """ Compiles a function """
         blocks = self._create_blocks(function.methods)
-        results = [compiler.compile_method(method)
-                    for compiler, method in blocks]
+        results = [
+            compiler.compile_method(method) for compiler, method in blocks
+        ]
         return self._join_blocks(results)
-
-
 
 
 from collections import namedtuple
 LLVMType = namedtuple('LLVMType', ('internal', 'name', 'char'))
 
 LLVM_TYPE_MAP = {
-    'Integer'  : LLVMType(llvmc.Type.int(),'int', 'i'),
-    'Real'     : LLVMType(llvmc.Type.double(),'real','r'),
-    'Boolean'  : LLVMType(llvmc.Type.int(1),'int', 'b')
+    'Integer':   LLVMType(llvmc.Type.int(), 'int', 'i'),
+    'Real':      LLVMType(llvmc.Type.double(), 'real', 'r'),
+    'Boolean':   LLVMType(llvmc.Type.int(1), 'int', 'b')
 }
+
 
 def llvm_type(type_set):
     """ Given a type_set with only one ellement this function will
@@ -346,20 +356,22 @@ def llvm_type(type_set):
     type_, = type_set
     return LLVM_TYPE_MAP[type_]
 
+
 def llvm_const(value):
     """ """
     type_ = llvm_type(typeset.const(value))
     return getattr(llvmc.Constant, type_.name)(type_.internal, value)
 
-def initial_values(function, llvm_function):
 
+def initial_values(function, llvm_function):
     values = {}
     for name, llvm_arg in zip(function.arguments, llvm_function.args):
         llvm_arg.name = name
         values[name] = llvm_arg
 
-    values.update((name, llvm_const(value))
-            for name, value in function.constants.items())
+    values.update(
+        (name, llvm_const(value)) for name, value in function.constants.items()
+    )
 
     return values
 
@@ -378,17 +390,18 @@ class LLVMBackend(object):
         Creates a LLVM function from all of these methods. Assumes that the
         methods have the same argument names.
         """
-        evaluator = Evaluator(typeset)
-        return_type = evaluator.evaluate_function(function, types)
+        return_type = function.evaluate(typeset, typeset)
         if not return_type:
-            raise Exception('Function not valid for arguments',
-                    function, arguments)
+            raise Exception(
+                'Function not valid for arguments',
+                function, arguments
+            )
 
-        build_functions = { node : self.build_function(depfunc, deptypes)
-                for node, (depfunc, deptypes) in evaluator.depends.items()
-                if depfunc != function and len(depfunc.methods) > 1
-                }
-
+        build_functions = {
+            node: self.build_function(depfunc, deptypes)
+            for node, (depfunc, deptypes) in evaluator.depends.items()
+            if depfunc != function and len(depfunc.methods) > 1
+        }
 
         arg_types = [llvm_type(arg).internal for arg in types]
         return_type = llvm_type(return_type).internal
@@ -412,7 +425,6 @@ class LLVMBackend(object):
         compiler = LLVMCompiler(values, build_functions, bldr)
         compiler.compile_function(function)
 
-
         try:
             llvm_function.verify()
         except llvm.LLVMException as exc:
@@ -428,5 +440,3 @@ class LLVMBackend(object):
             return self.functions[key]
         else:
             return self.build_function(function, types)
-
-
