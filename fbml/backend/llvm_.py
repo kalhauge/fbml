@@ -359,7 +359,7 @@ def initial_values(names, constants, llvm_function):
 
 
 def depends(function, types):
-    initial = function.bind_variables(TypeSet.transform, types)
+    initial = function.bind_variables(types, TypeSet.transform)
     used_functions = set()
 
     def collector(node, sources):

@@ -28,10 +28,12 @@ def if_subset(typeset, thenset, elseset):
     return lambda other: thenset if other[0] >= typeset else elseset
 
 
+def load(x): return x
+
 class FiniteSet (object):
 
     METHOD_MAPPING = {
-        'load': lambda x: x,
+        'load': load,
         'i_neg':  opr.neg,
         'i_add':  opr.add,
         'i_sub':  opr.sub,
@@ -90,8 +92,8 @@ class FiniteSet (object):
         def call(args):
             """ Calls the py method """
             retval = pymethod(*args)
-            L.debug("%s%s -> %s", pymethod, args, retval)
             return retval
+
         retval = frozenset(
             call(args) for args in itertools.product(*args_sets)
         )

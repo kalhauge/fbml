@@ -37,20 +37,20 @@ r_eq = BuildInMethod(('a', 'b'), 'r_eq')
 
 load = BuildInMethod(('a'), 'load')
 
-load = Function({}, [load])
-not_ = Function({}, [b_not])
-and_ = Function({}, [b_and])
+load = Function({}, [load], 'load')
+not_ = Function({}, [b_not], 'not')
+and_ = Function({}, [b_and], 'and')
 
-neg = Function({}, [i_neg, r_neg])
+neg = Function({}, [i_neg, r_neg], 'neg')
 
-add = Function({}, [i_add, r_add])
-sub = Function({}, [i_sub, r_sub])
-mul = Function({}, [i_mul, r_mul])
-ge = Function({},  [i_ge, r_ge])
-lt = Function({},  [i_lt, r_lt])
-le = Function({},  [i_le, r_le])
-gt = Function({},  [i_gt, r_gt])
-eq = Function({},  [i_eq, r_eq])
+add = Function({}, [i_add, r_add], 'add')
+sub = Function({}, [i_sub, r_sub], 'sub')
+mul = Function({}, [i_mul, r_mul], 'mul')
+ge = Function({},  [i_ge, r_ge], 'ge')
+lt = Function({},  [i_lt, r_lt], 'lt')
+le = Function({},  [i_le, r_le], name='le')
+gt = Function({},  [i_gt, r_gt], 'gt')
+eq = Function({},  [i_eq, r_eq], 'eq')
 
 METHODS = (
     i_neg,
