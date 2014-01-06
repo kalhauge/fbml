@@ -1,6 +1,8 @@
-""" .. currentmodule:: fbml.model
-.. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
+"""
 
+.. currentmodule:: fbml.model
+.. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
+.. verion:: 1.0
 
 :class:`Function`
 =================
@@ -30,17 +32,31 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
         :param self:
             The function that we want to know the free variables of.
 
-        :returns: The free variables of a function.
+        :returns: The set of free variables of a function.
         """
 
-        free_variables = set()
-        for method in self.methods:
-            free_variables.union(method.variables())
-        return free_variables - set(self.bound_values)
+        free_vars = [method.variables() for method in self.methods]
+        return set.union(*free_vars) - set(self.bound_values)
 
-    def bind_variables(self, transform, arguments):
+    def bind_variables(self, arguments, transform=lambda x:x):
         """
-        Returns an dictionary with all the needed values bound
+        Returns an dictionary with all the needed values bound,
+        the tranform function, takes the input and transfroms it into
+        a format know to the analysis.
+
+        :param arguments:
+            A dictionary filled with the arguments that the programer wants
+            to bind to the function.
+
+        :param transform:
+            A function that transform any (allowed) object to an internal
+            notion that can be used for further analysis. As default it
+            does nothing, and allow all values.
+
+        :returns:
+            A dictionary with all the bound values, a union of the already
+            bound values of the function, and the presented arguments. All
+            values presented in a format allowed by the transform
         """
         return {
             name: transform(value) for name, value in
@@ -48,8 +64,11 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
         }
 
     def evaluate(self, analysis, arguments):
-        """ Evaluates the function """
-        initial = self.bind_variables(analysis.transform, arguments)
+        """
+        Evaluates the function, by runing the methods using the arguments,
+        the analysis is provided to describe how this is handled.
+        """
+        initial = self.bind_variables(arguments, analysis.transform)
         return reduce(
             analysis.merge,
             (method.evaluate(analysis, initial) for method in self.methods),
@@ -57,7 +76,12 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
         )
 
     def clean(self, analysis, arguments):
-        initial = self.bind_variables(analysis.transform, arguments)
+        """
+        Cleans a function by returning a function, that do not contain
+        unrachable methods, if executed from the arguments.  The cleaning is
+        done recursively.
+        """
+        initial = self.bind_variables(arguments, transform)
         cleaned_methods = (
             method.clean(analysis, initial) for method in self.methods
         )
@@ -79,15 +103,14 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
 
     def variables(self):
         """
-        :param self:
-            the method we want to find the variables from.
+        the method we want to find the variables from.
 
         :returns: the variables used by the method.
         """
         return set(
             node for node in chain(
-                self.guard.precedes(),
-                self.statement.precedes()
+                self.guard.dependencies(),
+                self.statement.dependencies()
             ) if not isinstance(node, Node)
         )
 
@@ -140,6 +163,16 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
     """ Node , if the function is load, then the sources are
         allowe to be a string
     """
+
+    def dependencies(self):
+        """
+        Returns the dependencies of executing the node, ei the names of the
+        variables that should exist in initial values
+        """
+        sources = chain.from_iterable(node.sources for node in self.precedes())
+        return {
+            source for source in sources if not isinstance(source, Node)
+        }
 
     def precedes(self):
         """
