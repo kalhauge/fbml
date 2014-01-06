@@ -37,6 +37,11 @@ r_eq = BuildInMethod(('a', 'b'), 'r_eq')
 
 load = BuildInMethod(('a'), 'load')
 
+i_map = BuildInMethod(('a'), 'i_map')
+r_map = BuildInMethod(('a'), 'r_map')
+
+map_ = Function({}, [i_map, r_map], 'map')
+
 load = Function({}, [load], 'load')
 not_ = Function({}, [b_not], 'not')
 and_ = Function({}, [b_and], 'and')

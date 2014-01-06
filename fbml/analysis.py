@@ -30,10 +30,13 @@ def if_subset(typeset, thenset, elseset):
 
 def load(x): return x
 
+def reflex(x): return x
+
 class FiniteSet (object):
 
     METHOD_MAPPING = {
-        'load': load,
+        'load': reflex,
+        'i_map': reflex,
         'i_neg':  opr.neg,
         'i_add':  opr.add,
         'i_sub':  opr.sub,
@@ -103,9 +106,16 @@ class FiniteSet (object):
 
 class TypeSet (object):
 
+    LIST = lambda type_: ('List', type_)
+
     INTEGER = frozenset({'Integer'})
     BOOLEAN = frozenset({'Boolean'})
     REAL = frozenset({'Real'})
+
+    INTEGER_LIST = frozenset({LIST(INTEGER)})
+    REAL_LIST = frozenset({LIST(REAL)})
+    BOOL_LIST = frozenset({LIST(BOOL)})
+
     EXTREMUM = frozenset({})
 
     VALUES = (INTEGER, BOOLEAN, REAL)
@@ -118,6 +128,7 @@ class TypeSet (object):
 
     METHOD_MAPPING = {
         'load': lambda x: tuple(x)[0],
+        'i_map':    all_is(INTEGER_LIST, INTEGER, EXTREMUM)
         'i_neg':    all_is(INTEGER, INTEGER, EXTREMUM),
         'i_add':    all_is(INTEGER, INTEGER, EXTREMUM),
         'i_sub':    all_is(INTEGER, INTEGER, EXTREMUM),
@@ -127,6 +138,8 @@ class TypeSet (object):
         'i_le':     all_is(INTEGER, BOOLEAN, EXTREMUM),
         'i_gt':     all_is(INTEGER, BOOLEAN, EXTREMUM),
         'i_eq':     all_is(INTEGER, BOOLEAN, EXTREMUM),
+
+        'i_map':    all_is(REAL_LIST, REAL, EXTREMUM)
         'r_neg':    all_is(REAL,    REAL,    EXTREMUM),
         'r_add':    all_is(REAL,    REAL,    EXTREMUM),
         'r_sub':    all_is(REAL,    REAL,    EXTREMUM),
