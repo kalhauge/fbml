@@ -15,7 +15,8 @@ INCR = Function(
             node('test'),
             node(buildin.add, {'a': node('number'), 'b': node('value')})
         )
-    ]
+    ],
+    'incr'
 )
 
 MUL_IF_LESS = Function(
@@ -24,32 +25,14 @@ MUL_IF_LESS = Function(
         Method(
             node(buildin.le,  {'a': node('number'), 'b': node('x1')}),
             node(buildin.mul, {'a': node('number'), 'b': node('x1')})
+        ),
+        Method(
+            node(buildin.gt,  {'a': node('number'), 'b': node('x1')}),
+            node('x1')
         )
-    ]
+    ],
+    'mul_if_less'
 )
-
-# TAX = Function(
-#     {'x1' : 300000.0, 'x3' : 0.40, 'x2' : 0.60 },
-#     [
-#         Method(
-#             node(buildin.le, [node('income'), node('x1')]),
-#             node(buildin.mul, [node('income'), node('x3')]),
-#             ),
-#         Method(
-#             node(buildin.gt, [node('income'), node('x1')]),
-#             node(buildin.add, [
-#                 node(buildin.mul, [
-#                     node(buildin.sub,[
-#                         node('income'),
-#                         node('x1')
-#                         ]),
-#                     node('x2')
-#                     ]),
-#                 node(TAX, [node('x1')]),
-#                 ])
-#             ),
-#         ]
-#     )
 
 # ABS = Function(
 #     Method('abs', ['a'],

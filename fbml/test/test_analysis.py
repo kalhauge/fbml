@@ -37,39 +37,20 @@ def test_incr_type_set_clean():
     point_of_interest = function.methods[0].statement.function.methods
     assert point_of_interest == [buildin.i_add]
 
+def test_multiply_finite_set_clean_gt():
+    """ This example tests cleaning of mul_if_lees if greater that 10"""
+    function = MUL_IF_LESS.clean(FiniteSet, {'number': 11})
 
-#def test_taxes_finite_set():
-#    """
-#    This example test the taxes example
-#
-#    tax (income) {
-#        income > 300000 ->
-#            above = income - 300000,
-#            below = 300000,
-#            above * 0.60 + tax below.
-#        income <= 300000 ->
-#            income * 0.40.
-#        }
-#    """
-#    evaluator = Evaluator(finiteset)
-#    value = evaluator.evaluate(TAX, [300100.0])
-#    assert value == finiteset.const(120060.0), str(value)
-#
-#
-#def test_taxes_type_set():
-#    """
-#    This example test the taxes example
-#
-#    tax {
-#        (income) income > 300000 ->
-#            above = income - 300000,
-#            below = 300000,
-#            above * 0.60 + tax below.
-#        (income) income <= 300000 ->
-#            income * 0.40.
-#    }
-#    """
-#    evaluator = Evaluator(typeset)
-#    value = evaluator.evaluate(TAX, [300100.0])
-#    assert value == typeset.REAL, str(value)
-#
+    assert len(function.methods) == 1
+
+    point_of_interest = function.methods[0].statement.function
+    assert point_of_interest.methods == buildin.load.methods
+
+def test_multiply_finite_set_clean_le():
+    """ This example tests the cleaning of multiply, if less or equal to 10"""
+    function = MUL_IF_LESS.clean(FiniteSet, {'number': 10})
+
+    assert len(function.methods) == 1
+
+    point_of_interest = function.methods[0].statement.function
+    assert point_of_interest.methods == buildin.mul.methods

@@ -28,8 +28,9 @@ class Function(object):
     """
 
     def __init__(self, bound_values, methods, name=None):
-        self.bound_value = bound_value
-        self.method = methods
+        assert name
+        self.bound_values = bound_values
+        self.methods = methods
         self.name = name
 
     def free_variables(self):
@@ -97,14 +98,18 @@ class Function(object):
         unrachable methods, if executed from the arguments.  The cleaning is
         done recursively.
         """
-        initial = self.bind_variables(arguments, transform)
-        cleaned_methods = (
+        initial = self.bind_variables(arguments, analysis.transform)
+        cleaned_methods = [
             method.clean(analysis, initial) for method in self.methods
-        )
+        ]
         good_methods = [method for method in cleaned_methods if method]
-        return Function(self.bound_values, good_methods)
+        L.debug('CLEAN: %s(%s) -> %s -> %s',
+            self.code,
+            ', '.join('%s=%s' % x for x in initial.items()),
+            cleaned_methods, good_methods)
+        return Function(self.bound_values, good_methods, self.name)
 
-    def __repr__(self):
+    def __str__(self):
         return 'Function(\n    %s,\n    %s\n)' % (
             self.bound_values,
             str(self.methods).replace('\n', '\n    '))
@@ -114,7 +119,7 @@ class Function(object):
         if self.name:
             return self.name
         else:
-            return hex(id(self))
+            return 'f' + hex(id(self))
 
 
 class Method(namedtuple('Method', ['guard', 'statement'])):
@@ -148,10 +153,10 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
             if analysis.allow(test_value) else analysis.EXTREMUM
 
     def clean(self, analysis, initial):
-        return Method(
-            self.guard.clean(analysis, initial)[1],
-            self.statement.clean(analysis, initial)[1]
-        )
+        test, guard = self.guard.clean(analysis, initial)
+        result, statement = self.statement.clean(analysis, initial)
+        return Method(guard, statement)\
+            if analysis.allow(test) and statement else None
 
     def __repr__(self):
         return "Method(\n    %s,\n    %s\n)" % (
@@ -190,10 +195,13 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
         )
 
     def clean(self, analysis, initial):
-        return self if analysis.apply(
+        result = analysis.apply(
             self,
-            tuple(initial[argname] for argname in self.argmap)
-        ) else None
+            tuple(initial[argname] for argname in self.argmap))
+        return self if result else None
+
+    def __repr__(self):
+        return self.code
 
 
 class Node (namedtuple('Node', ['function', 'sources', 'names'])):
@@ -301,18 +309,15 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
 
 
     def __str__(self):
-        if self.sources:
-            return 'Node(\n    %s,\n    %s,\n    %s\n)' % (
-                str(self.function).replace('\n', '\n    '),
-                ('(\n    ' + ',\n    '.join(
-                    repr(source) for source in self.sources
-                ) + '\n)').replace('\n', '\n    '),
-                self.names)
-        else:
-            return 'Node(%r, None, None)' % (self.function,)
+        return 'Node %s:\n    %s,\n    %s\n)' % (
+            self.function.code + str(self.function.methods),
+            ('(\n    ' + ',\n    '.join(
+                repr(source) for source in self.sources
+            ) + '\n)').replace('\n', '\n    '),
+            self.names)
 
     def __repr__(self):
-        return 'Node(%r, %r)' % (self[0], self[1])
+        return 'Node %s: %r' % (self[0].code, self.sources)
 
     @property
     def code(self):
