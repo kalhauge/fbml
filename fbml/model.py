@@ -1,5 +1,4 @@
-"""
-.. currentmodule:: fbml.model
+""" .. currentmodule:: fbml.model
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
 
@@ -39,23 +38,18 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
             free_variables.union(method.variables())
         return free_variables - set(self.bound_values)
 
-    def bind_variables(self, arguments):
+    def bind_variables(self, transform, arguments):
         """
         Returns an dictionary with all the needed values bound
         """
-        bound_vars = dict(chain(arguments.items(), self.bound_values.items()))
-        # Assert might not be nesseary
-        assert self.free_variables().issubset(bound_vars)
-        return bound_vars
+        return {
+            name: transform(value) for name, value in
+            chain(arguments.items(), self.bound_values.items())
+        }
 
     def evaluate(self, analysis, arguments):
-        """
-        Returns an function able to evaluate the Function
-        """
-        initial = {
-            name: analysis.transform(value) for name, value in
-            self.bind_variables(arguments).items()
-        }
+        """ Evaluates the function """
+        initial = self.bind_variables(analysis.transform, arguments)
         return reduce(
             analysis.merge,
             (method.evaluate(analysis, initial) for method in self.methods),
@@ -63,10 +57,7 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
         )
 
     def clean(self, analysis, arguments):
-        initial = {
-            name: analysis.transform(value) for name, value in
-            self.bind_variables(arguments).items()
-        }
+        initial = self.bind_variables(analysis.transform, arguments)
         cleaned_methods = (
             method.clean(analysis, initial) for method in self.methods
         )
@@ -83,6 +74,8 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
 
 
 class Method(namedtuple('Method', ['guard', 'statement'])):
+
+    is_buildin = False
 
     def variables(self):
         """
@@ -118,6 +111,8 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
 
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
+
+    is_buildin = True
 
     def variables(self):
         """
@@ -181,11 +176,14 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         )
         return sources - precedence
 
+    def project(self, values):
+        """ Projects the values onto the names of the function """
+        return dict(zip(self.names, values))
+
     def evaluate(self, analysis, initial):
         return self.visit(
             lambda node, sources: node.function.evaluate(
-                analysis,
-                dict(zip(node.names, sources))
+                analysis, node.project(sources)
             ),
             initial
         )
@@ -197,7 +195,7 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
 
         def cleanup(node, sources):
             results, nodes = zip(*sources)
-            values = dict(zip(node.names, results))
+            values = node.project(results)
             new_function = node.function.clean(analysis, values)
             result = node.function.evaluate(analysis, values)
             return (result, Node(new_function, nodes, node.names))
@@ -232,7 +230,7 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
                 raise
         return mapping
 
-    def __repr__(self):
+    def __str__(self):
         if self.sources:
             return 'Node(\n    %s,\n    %s,\n    %s\n)' % (
                 str(self.function).replace('\n', '\n    '),
@@ -242,6 +240,9 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
                 self.names)
         else:
             return 'Node(%r, None, None)' % (self.function,)
+
+    def __repr__(self):
+        return 'Node(%r, %r)' % (self[0], self[1])
 
     @property
     def code(self):
