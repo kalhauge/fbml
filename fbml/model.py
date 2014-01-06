@@ -205,8 +205,8 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
 
 
 class Node (namedtuple('Node', ['function', 'sources', 'names'])):
-    """ Node , if the function is load, then the sources are
-        allowe to be a string
+    """
+    Node, if the function is load, then the sources are allowed to be a string
     """
 
     def dependencies(self):
@@ -221,7 +221,7 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
 
     def precedes(self):
         """
-        Returns the set of nodes that precedes the node. A node presedes an
+        Returns the set of nodes that precedes the node. A node precedes an
         other node if there is an direct path from the second node to the first
         navigating thru the sources of the node.
 
