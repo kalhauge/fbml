@@ -10,10 +10,10 @@ L = logging.getLogger(__name__)
 from fbml import model
 from fbml import buildin
 
+
 def node(function, sources=None):
     """ Returns a node """
     if not sources and isinstance(function, str):
-        return model.Node(buildin.load, (function,))
+        return model.Node(buildin.load, (function,), ('a', ))
     else:
-        return model.Node(function, tuple(sources))
-
+        return model.Node(function, tuple(sources.values()), tuple(sources))

@@ -1,142 +1,160 @@
-"""
-.. currentmodule:: fbml.model
+""" .. currentmodule:: fbml.model
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
 
+
+:class:`Function`
+=================
+
+The function is a holder of bound_values, ei. constants, and a set of methods.
+
+
 """
-from itertools import compress, chain
+from itertools import chain
 from operator import itemgetter
 from collections import namedtuple, deque
+from functools import reduce
 
 import logging
 L = logging.getLogger(__name__)
 
 
-class Function(object):
-    """
-    The overall function
+class Function(namedtuple('Function', ['bound_values', 'methods'])):
 
-    :param name:
-        The name of the function
-
-    :param arguments:
-        The named arguments
-
-    :param constants:
-        Constants, used in the functions.
-
-    :param methods:
-        Methods.
-    """
-    def __init__(self, name, arguments, constants, methods):
-        self.name = name
-        self.arguments = arguments
-        self.constants = constants
-        self.methods = methods
-
-    def define(self, constants, methods):
-        """ Defines the function """
-        self.constants = constants
-        self.methods = methods
-
-    @classmethod
-    def declare(cls, name, arguments):
-        """ Declares a function """
-        return cls(name, arguments, None, None)
-
-    def free_values(function):
-        """ Returns the free values of the methods """
-        return chain(function.arguments, function.constants)
-
-    def bind_values(self, arguments, const=lambda x: x):
-        """ Bind values of a function
-
-        :param arguments:
-            The arguments containing
-
-        :param const:
-            A function that maps a value to a constant.
+    def free_variables(self):
         """
-        bound_values = {k: const(v) for k, v in self.constants.items()}
-        bound_values.update(zip(self.arguments, arguments))
-        return bound_values
+        Free variables is the variables that needs to be bound to the function
+        for all of its methods to exceute. Calculated by finding the variables
+        used in all of the methods, and removing the bound_values from the
+        function.
 
-    def evaluate(self, arguments, analysis):
-        bound_values = self.bind_values(arguments, analysis.const)
+        :param self:
+            The function that we want to know the free variables of.
+
+        :returns: The free variables of a function.
+        """
+
+        free_variables = set()
+        for method in self.methods:
+            free_variables.union(method.variables())
+        return free_variables - set(self.bound_values)
+
+    def bind_variables(self, transform, arguments):
+        """
+        Returns an dictionary with all the needed values bound
+        """
+        return {
+            name: transform(value) for name, value in
+            chain(arguments.items(), self.bound_values.items())
+        }
+
+    def evaluate(self, analysis, arguments):
+        """ Evaluates the function """
+        initial = self.bind_variables(analysis.transform, arguments)
         return reduce(
-            (lambda method, result:
-                analysis.merge(
-                    method.evaluate(arguments, bound_values),
-                    result
-                )),
-            self.methods,
+            analysis.merge,
+            (method.evaluate(analysis, initial) for method in self.methods),
             analysis.EXTREMUM
         )
 
-    def __str__(self):
-        return self.name
+    def clean(self, analysis, arguments):
+        initial = self.bind_variables(analysis.transform, arguments)
+        cleaned_methods = (
+            method.clean(analysis, initial) for method in self.methods
+        )
+        good_methods = [method for method in cleaned_methods if method]
+        return Function(self.bound_values, good_methods)
+
+    def __hash__(self):
+        return id(self)
+
+    def __repr__(self):
+        return 'Function(\n    %s,\n    %s\n)' % (
+            self.bound_values,
+            str(self.methods).replace('\n', '\n    '))
 
 
-class SubFunction(object):
-    """
-    A function only pointing to a subset of the mehtods in
-    the function
-    """
-    def __init__(self, function, method_filter):
-        self.super_function = function
-        self.method_filter = tuple(method_filter)
-
-    @property
-    def name(self):
-        """ Proxy function for name """
-        return self.super_function.name
-
-    @property
-    def arguments(self):
-        """ Proxy function for arguments """
-        return self.super_function.arguments
-
-    @property
-    def constants(self):
-        """ Proxy function for constants """
-        return self.super_function.constants
-
-    @property
-    def methods(self):
-        """ Proxy function for methode """
-        return compress(self.super_function.methods, self.method_filter)
-
-
-class Method (namedtuple('Method', ['guard', 'statement'])):
-    """ Method """
+class Method(namedtuple('Method', ['guard', 'statement'])):
 
     is_buildin = False
 
+    def variables(self):
+        """
+        :param self:
+            the method we want to find the variables from.
+
+        :returns: the variables used by the method.
+        """
+        return set(
+            node for node in chain(
+                self.guard.precedes(),
+                self.statement.precedes()
+            ) if not isinstance(node, Node)
+        )
+
+    def evaluate(self, analysis, initial):
+        assert self.variables().issubset(initial)
+        test_value = self.guard.evaluate(analysis, initial)
+        return self.statement.evaluate(analysis, initial)\
+            if analysis.allow(test_value) else analysis.EXTREMUM
+
+    def clean(self, analysis, initial):
+        return Method(
+            self.guard.clean(analysis, initial)[1],
+            self.statement.clean(analysis, initial)[1]
+        )
+
+    def __repr__(self):
+        return "Method(\n    %s,\n    %s\n)" % (
+            str(self.guard).replace('\n', '\n    '),
+            str(self.statement).replace('\n', '\n    ')
+        )
+
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
-    """ BuildInMethod """
 
     is_buildin = True
 
-
-class Node (namedtuple('Node', ['function', 'sources'])):
-    """ Node """
-    def reachable_nodes(self):
+    def variables(self):
         """
-        Calculates reacable nodes
+        :param self:
+            the method we want to find the variables from.
+
+        :returns: the variables used by the method.
         """
-        visitors = deque((self,))
-        nodes = set()
+        return set(self.argmap)
 
-        while visitors:
-            next_vistor = visitors.pop()
-            nodes.add(next_vistor.sources)
-            visitors.extendleft(next_vistor.sources)
+    def evaluate(self, analysis, initial):
+        return analysis.apply(
+            self,
+            tuple(initial[argname] for argname in self.argmap)
+        )
 
-        return nodes
+    def clean(self, analysis, initial):
+        return self if analysis.apply(
+            self,
+            tuple(initial[argname] for argname in self.argmap)
+        ) else None
 
-    def nodes_in_order(self):
+
+class Node (namedtuple('Node', ['function', 'sources', 'names'])):
+    """ Node , if the function is load, then the sources are
+        allowe to be a string
+    """
+
+    def precedes(self):
         """
-        Return the nodes in a partial ordering
+        Returns the set of nodes that precedes the node. A node presedes an
+        other node if there is an direct path from the second node to the first
+        navigating thru the sources of the node.
+
+        The nodes are returned in order.
+
+        :param self:
+            The node from wich to evaluate the dominating set of
+            nodes
+
+        :returns:
+            all the nodes that precedes the node
         """
         node_numbers = {self: 0}
 
@@ -150,6 +168,39 @@ class Node (namedtuple('Node', ['function', 'sources'])):
 
         return [node for node, index in
                 sorted(node_numbers.items(), key=itemgetter(1))]
+
+    def variabels(self):
+        precedence = self.precedes()
+        sources = reduce(
+            set.union, (node.sources for node in precedence), set()
+        )
+        return sources - precedence
+
+    def project(self, values):
+        """ Projects the values onto the names of the function """
+        return dict(zip(self.names, values))
+
+    def evaluate(self, analysis, initial):
+        return self.visit(
+            lambda node, sources: node.function.evaluate(
+                analysis, node.project(sources)
+            ),
+            initial
+        )
+
+    def clean(self, analysis, initial):
+        mapping = {
+            name: (val, name) for name, val in initial.items()
+        }
+
+        def cleanup(node, sources):
+            results, nodes = zip(*sources)
+            values = node.project(results)
+            new_function = node.function.clean(analysis, values)
+            result = node.function.evaluate(analysis, values)
+            return (result, Node(new_function, nodes, node.names))
+
+        return self.visit(cleanup, mapping)
 
     def visit(self, visitor, initial):
         """
@@ -165,12 +216,12 @@ class Node (namedtuple('Node', ['function', 'sources'])):
         :returns:
             Whatever the visitor returns
         """
-        return self.visit_mapping(visitor, initial)[self]
+        return self.visit_all(visitor, initial)[self]
 
-    def visit_mapping(self, visitor, initial):
+    def visit_all(self, visitor, initial):
         """ Returns the internal mapping for the visitor """
         mapping = dict(initial)
-        for visit_node in reversed(self.nodes_in_order()):
+        for visit_node in reversed(self.precedes()):
             try:
                 sources = tuple(mapping[s] for s in visit_node.sources)
                 mapping[visit_node] = visitor(visit_node, sources)
@@ -179,8 +230,19 @@ class Node (namedtuple('Node', ['function', 'sources'])):
                 raise
         return mapping
 
+    def __str__(self):
+        if self.sources:
+            return 'Node(\n    %s,\n    %s,\n    %s\n)' % (
+                str(self.function).replace('\n', '\n    '),
+                ('(\n    ' + ',\n    '.join(
+                    repr(source) for source in self.sources
+                ) + '\n)').replace('\n', '\n    '),
+                self.names)
+        else:
+            return 'Node(%r, None, None)' % (self.function,)
+
     def __repr__(self):
-        return 'Node(%s, %s)' % self
+        return 'Node(%r, %r)' % (self[0], self[1])
 
     @property
     def code(self):
