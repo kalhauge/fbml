@@ -11,15 +11,14 @@ def compile_function(function, args):
     """ Compiles a function using LLVM """
     function = function.clean(TypeSet, args)
     back = llvm_.LLVMBackend()
-    llvm_function = back.compile(function, args)
-    print(llvm_function)
+    llvm_function = back.compile(function, args, "test")
     return llvm_function
 
 
 def test_increment():
     """ Test INCR """
     result = compile_function(test.INCR, {'number': TypeSet.INTEGER})
-    assert False, str(result)
+    assert False
     #assert str(result) == '', str(result)
 
 #def est_abs():

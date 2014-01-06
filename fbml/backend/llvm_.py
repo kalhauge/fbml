@@ -98,10 +98,6 @@ def buildin_method(bldr, name, args):
                 )
                 return getattr(bldr, funcname)(lhs, rhs)
 
-#    elif name in TYPE_MAP:
-#        test = args[0].type == TYPE_MAP[name][0]
-#        ret = constant_from_value(test)
-#        return ret
     else:
         raise RuntimeError('Not a buildin method %s' % name)
 
@@ -293,16 +289,6 @@ class LLVMCompiler (collections.namedtuple('Context', [
         return Result(internal.datamap[basenode], internal.bldr)
 
     def compile_node(self, node):
-##        if not node.sources:
-#            try:
-#                return Result(self.datamap[node.name], self.bldr)
-#            except KeyError:
-#                raise RuntimeError(
-#                    'Could not copile node, because {name}'
-#                    ' where not computed in {datamap}'.format(
-#                        name=node.name, datamap=self.datamap
-#                    ))
-#        else:
         return self.compile_function_call(node)
 
     def compile_buildin_method(self, method):
@@ -449,10 +435,10 @@ class LLVMBackend(object):
 
     def compile(self, function, type_map, name=None):
         """ Compiles a FBML function to a LLVM Function """
-
         if not name:
-            name = 'f' +  str(id(function))
+            name = 'f' +  hex(id(function))
 
+        L.debug('Compiling %s %s', name, type_map)
         type_id = tuple(
             type_ for name, type_ in sorted(
                 type_map.items(), key=itemgetter(1)
@@ -460,6 +446,9 @@ class LLVMBackend(object):
         )
         key = (function, type_id)
         if key in self.functions:
-            return self.functions[key]
+            result = self.functions[key]
         else:
-            return self.build_function(function, type_map, name)
+            result = self.build_function(function, type_map, name)
+
+        L.debug('%s -> %s', name, result)
+        return result
