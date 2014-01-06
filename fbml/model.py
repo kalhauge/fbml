@@ -19,6 +19,8 @@ from functools import reduce
 import logging
 L = logging.getLogger(__name__)
 
+class BadBound(Exception):
+    """ Bad bound error """
 
 class Function(namedtuple('Function', ['bound_values', 'methods'])):
 
@@ -53,11 +55,17 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
             notion that can be used for further analysis. As default it
             does nothing, and allow all values.
 
+        :raises BadBound:
+            Exception if that arguments is not filling the entire free_variable
+            space, or if in overlapping with the allready bound variables
+
         :returns:
             A dictionary with all the bound values, a union of the already
             bound values of the function, and the presented arguments. All
             values presented in a format allowed by the transform
         """
+        if self.free_variables() != set(arguments):
+            raise BadBound(arguments)
         return {
             name: transform(value) for name, value in
             chain(arguments.items(), self.bound_values.items())
