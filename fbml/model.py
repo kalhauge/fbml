@@ -106,12 +106,19 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
 
 
 class Method(namedtuple('Method', ['guard', 'statement'])):
+    """
+    The method is the branching part of the model, each method contains of a
+    guard and a statement, a method will not execute unless a guard evaluates
+    to true.
+
+    """
 
     is_buildin = False
 
     def variables(self):
         """
-        the method we want to find the variables from.
+        A method which finds the variables used by the method to execute,
+        before all variables is ready a method, cannot fire.
 
         :returns: the variables used by the method.
         """
@@ -142,13 +149,23 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
 
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
+    """
+    The build in methods is special methods that does not contain a
+    subflow. These entities is therefor build in and unchangeable.
+
+    A build in method has two attributes a :attr:`argmap` and a
+    :attr:`code` attribute. The argmap is the argumentnames in the
+    oder in which that they should be called oppon the lower hardwar
+    leves. The code attribute is the buildin name, which can be used
+    when building backends.
+    """
 
     is_buildin = True
 
     def variables(self):
         """
-        :param self:
-            the method we want to find the variables from.
+        Same as in the Method, but in the build in method this is all
+        found in advance.
 
         :returns: the variables used by the method.
         """
@@ -210,38 +227,14 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         return [node for node, index in
                 sorted(node_numbers.items(), key=itemgetter(1))]
 
-    def variabels(self):
-        precedence = self.precedes()
-        sources = reduce(
-            set.union, (node.sources for node in precedence), set()
-        )
-        return sources - precedence
-
     def project(self, values):
-        """ Projects the values onto the names of the function """
+        """
+        Projects the values onto the names of the function
+
+        :returns:
+            A dict containing the value, name pairs.
+        """
         return dict(zip(self.names, values))
-
-    def evaluate(self, analysis, initial):
-        return self.visit(
-            lambda node, sources: node.function.evaluate(
-                analysis, node.project(sources)
-            ),
-            initial
-        )
-
-    def clean(self, analysis, initial):
-        mapping = {
-            name: (val, name) for name, val in initial.items()
-        }
-
-        def cleanup(node, sources):
-            results, nodes = zip(*sources)
-            values = node.project(results)
-            new_function = node.function.clean(analysis, values)
-            result = node.function.evaluate(analysis, values)
-            return (result, Node(new_function, nodes, node.names))
-
-        return self.visit(cleanup, mapping)
 
     def visit(self, visitor, initial):
         """
@@ -270,6 +263,30 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
                 L.error("KeyError: %s, %s", visit_node, mapping)
                 raise
         return mapping
+
+
+    def evaluate(self, analysis, initial):
+        return self.visit(
+            lambda node, sources: node.function.evaluate(
+                analysis, node.project(sources)
+            ),
+            initial
+        )
+
+    def clean(self, analysis, initial):
+        mapping = {
+            name: (val, name) for name, val in initial.items()
+        }
+
+        def cleanup(node, sources):
+            results, nodes = zip(*sources)
+            values = node.project(results)
+            new_function = node.function.clean(analysis, values)
+            result = node.function.evaluate(analysis, values)
+            return (result, Node(new_function, nodes, node.names))
+
+        return self.visit(cleanup, mapping)
+
 
     def __str__(self):
         if self.sources:
