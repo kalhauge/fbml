@@ -22,7 +22,15 @@ L = logging.getLogger(__name__)
 class BadBound(Exception):
     """ Bad bound error """
 
-class Function(namedtuple('Function', ['bound_values', 'methods'])):
+class Function(object):
+    """
+    The top object of the bunch.
+    """
+
+    def __init__(self, bound_values, methods, name=None):
+        self.bound_value = bound_value
+        self.method = methods
+        self.name = name
 
     def free_variables(self):
         """
@@ -96,13 +104,17 @@ class Function(namedtuple('Function', ['bound_values', 'methods'])):
         good_methods = [method for method in cleaned_methods if method]
         return Function(self.bound_values, good_methods)
 
-    def __hash__(self):
-        return id(self)
-
     def __repr__(self):
         return 'Function(\n    %s,\n    %s\n)' % (
             self.bound_values,
             str(self.methods).replace('\n', '\n    '))
+
+    @property
+    def code(self):
+        if self.name:
+            return self.name
+        else:
+            return hex(id(self))
 
 
 class Method(namedtuple('Method', ['guard', 'statement'])):
