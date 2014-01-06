@@ -82,7 +82,6 @@ def buildin_method(bldr, name, args):
         funcname = BUILDIN_MAP[name]
         try:
             lhs, rhs = args
-            print(lhs, rhs, args)
         except ValueError:
             arg, = args
             return getattr(bldr, funcname)(arg)
