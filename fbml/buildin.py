@@ -48,7 +48,7 @@ sub = Function({}, [i_sub, r_sub], 'sub')
 mul = Function({}, [i_mul, r_mul], 'mul')
 ge = Function({},  [i_ge, r_ge], 'ge')
 lt = Function({},  [i_lt, r_lt], 'lt')
-le = Function({},  [i_le, r_le], name='le')
+le = Function({},  [i_le, r_le], 'le')
 gt = Function({},  [i_gt, r_gt], 'gt')
 eq = Function({},  [i_eq, r_eq], 'eq')
 
