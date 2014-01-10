@@ -16,4 +16,17 @@ def node(function, sources=None):
     if not sources and isinstance(function, str):
         return model.Node(buildin.load, (function,), ('a', ))
     else:
-        return model.Node(function, tuple(sources.values()), tuple(sources))
+        return model.Node(
+            function,
+            tuple(sources),
+            tuple(sources.values())
+        )
+
+
+def renode(function, reduction, sources):
+    return model.ReduceNode(
+        function,
+        reduction,
+        tuple(sources),
+        tuple(sources.values())
+    )

@@ -19,8 +19,10 @@ from functools import reduce
 import logging
 L = logging.getLogger(__name__)
 
+
 class BadBound(Exception):
     """ Bad bound error """
+
 
 class Function(object):
     """
@@ -49,7 +51,7 @@ class Function(object):
         free_vars = [method.variables() for method in self.methods]
         return set.union(*free_vars) - set(self.bound_values)
 
-    def bind_variables(self, arguments, transform=lambda x:x):
+    def bind_variables(self, arguments, transform=lambda x: x):
         """
         Returns an dictionary with all the needed values bound,
         the tranform function, takes the input and transfroms it into
@@ -104,9 +106,9 @@ class Function(object):
         ]
         good_methods = [method for method in cleaned_methods if method]
         L.debug('CLEAN: %s(%s) -> %s -> %s',
-            self.code,
-            ', '.join('%s=%s' % x for x in initial.items()),
-            cleaned_methods, good_methods)
+                self.code,
+                ', '.join('%s=%s' % x for x in initial.items()),
+                cleaned_methods, good_methods)
         return Function(self.bound_values, good_methods, self.name)
 
     def __str__(self):
@@ -148,8 +150,8 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
 
     def evaluate(self, analysis, initial):
         assert self.variables().issubset(initial)
-        test_value = self.guard.evaluate(analysis, initial)
-        return self.statement.evaluate(analysis, initial)\
+        test_value = self.guard.evaluate_all(analysis, initial)
+        return self.statement.evaluate_all(analysis, initial)\
             if analysis.allow(test_value) else analysis.EXTREMUM
 
     def clean(self, analysis, initial):
@@ -284,10 +286,12 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
                 raise
         return mapping
 
+    def evaluate(self, analysis, sources):
+        return self.function(analysis, sources)
 
-    def evaluate(self, analysis, initial):
+    def evaluate_all(self, analysis, initial):
         return self.visit(
-            lambda node, sources: node.function.evaluate(
+            lambda node, sources: node.evaluate(
                 analysis, node.project(sources)
             ),
             initial
@@ -302,11 +306,10 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
             results, nodes = zip(*sources)
             values = node.project(results)
             new_function = node.function.clean(analysis, values)
-            result = node.function.evaluate(analysis, values)
+            result = node.evaluate_all(analysis, values)
             return (result, Node(new_function, nodes, node.names))
 
         return self.visit(cleanup, mapping)
-
 
     def __str__(self):
         return 'Node %s:\n    %s,\n    %s\n)' % (
@@ -323,3 +326,33 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
     def code(self):
         """ returns the code of the node """
         return hex(id(self))
+
+
+class ReduceNode(namedtuple('ReduceNode', [
+    'function',
+    'reduction',
+    'names',
+    'sources'
+])):
+
+    dependencies = Node.dependencies
+    precedes = Node.precedes
+    visit = Node.visit
+    visit_all = Node.visit_all
+    clean = Node.clean
+
+    def evaluate(self, analysis, sources):
+        return analysis.reduce(self.function, self.reduction, sources)
+
+    evaluate_all = Node.evaluate_all
+
+    def __str__(self):
+        return 'ReduceNode %s:\n    %s,\n    %s\n)' % (
+            self.function.code + str(self.function.methods),
+            ('(\n    ' + ',\n    '.join(
+                repr(source) for source in self.sources
+            ) + '\n)').replace('\n', '\n    '),
+            self.names)
+
+    def __repr__(self):
+        return 'ReduceNode %s: %r' % (self[0].code, self.sources)

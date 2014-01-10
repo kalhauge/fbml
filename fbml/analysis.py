@@ -5,6 +5,7 @@
 
 import operator as opr
 import itertools
+from collections import namedtuple
 
 import logging
 L = logging.getLogger(__name__)
@@ -28,9 +29,9 @@ def if_subset(typeset, thenset, elseset):
     return lambda other: thenset if other[0] >= typeset else elseset
 
 
-def load(x): return x
+def reflex(x):
+    return x
 
-def reflex(x): return x
 
 class FiniteSet (object):
 
@@ -104,13 +105,23 @@ class FiniteSet (object):
         return retval
 
 
+BasicType = namedtuple('BasicType', ['name', 'size'])
+CombinedType = namedtuple('CombinedType', ['types'])
+ListType = namedtuple('ListType', [
+
 class TypeSet (object):
+
+    Type = namedtuple('Type', ['name', 'size'])
 
     LIST = lambda type_: ('List', type_)
 
-    INTEGER = frozenset({'Integer'})
-    BOOLEAN = frozenset({'Boolean'})
-    REAL = frozenset({'Real'})
+    int64 = Type('Integer', 64)
+    bool_ = Type('Boolean', 8)
+    real64 = Type('Real', 64)
+
+    INTEGER = frozenset({int64})
+    BOOLEAN = frozenset({bool_})
+    REAL = frozenset({real64})
 
     INTEGER_LIST = frozenset({LIST(INTEGER)})
     REAL_LIST = frozenset({LIST(REAL)})
@@ -128,7 +139,7 @@ class TypeSet (object):
 
     METHOD_MAPPING = {
         'load': lambda x: tuple(x)[0],
-        'i_map':    all_is(INTEGER_LIST, INTEGER, EXTREMUM)
+        'i_map':    all_is(INTEGER_LIST, INTEGER, EXTREMUM),
         'i_neg':    all_is(INTEGER, INTEGER, EXTREMUM),
         'i_add':    all_is(INTEGER, INTEGER, EXTREMUM),
         'i_sub':    all_is(INTEGER, INTEGER, EXTREMUM),
