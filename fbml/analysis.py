@@ -105,27 +105,26 @@ class FiniteSet (object):
         return retval
 
 
-BasicType = namedtuple('BasicType', ['name', 'size'])
+BasicType = namedtuple('BasicType', ['name'])
 CombinedType = namedtuple('CombinedType', ['types'])
-ListType = namedtuple('ListType', [
+ListType = namedtuple('ListType', ['type'])
+
 
 class TypeSet (object):
 
     Type = namedtuple('Type', ['name', 'size'])
 
-    LIST = lambda type_: ('List', type_)
-
-    int64 = Type('Integer', 64)
-    bool_ = Type('Boolean', 8)
-    real64 = Type('Real', 64)
+    integer = BasicType('Integer')
+    boolean = BasicType('Boolean')
+    real = BasicType('Real')
 
     INTEGER = frozenset({int64})
     BOOLEAN = frozenset({bool_})
     REAL = frozenset({real64})
 
-    INTEGER_LIST = frozenset({LIST(INTEGER)})
-    REAL_LIST = frozenset({LIST(REAL)})
-    BOOL_LIST = frozenset({LIST(BOOL)})
+    INTEGER_LIST = frozenset({ListType(integer)})
+    REAL_LIST = frozenset({ListType(real)})
+    BOOL_LIST = frozenset({ListType(boolean)})
 
     EXTREMUM = frozenset({})
 
@@ -150,7 +149,7 @@ class TypeSet (object):
         'i_gt':     all_is(INTEGER, BOOLEAN, EXTREMUM),
         'i_eq':     all_is(INTEGER, BOOLEAN, EXTREMUM),
 
-        'i_map':    all_is(REAL_LIST, REAL, EXTREMUM)
+        'r_map':    all_is(REAL_LIST, REAL, EXTREMUM),
         'r_neg':    all_is(REAL,    REAL,    EXTREMUM),
         'r_add':    all_is(REAL,    REAL,    EXTREMUM),
         'r_sub':    all_is(REAL,    REAL,    EXTREMUM),
@@ -160,6 +159,9 @@ class TypeSet (object):
         'r_le':     all_is(REAL,    BOOLEAN, EXTREMUM),
         'r_gt':     all_is(REAL,    BOOLEAN, EXTREMUM),
         'r_eq':     all_is(REAL,    BOOLEAN, EXTREMUM),
+
+        'b_map':    all_is(REAL_LIST, REAL, EXTREMUM),
+        'r_neg':    all_is(REAL,    REAL,    EXTREMUM),
         'b_not':    all_is(BOOLEAN, BOOLEAN, EXTREMUM),
         'b_and':    all_is(BOOLEAN, BOOLEAN, EXTREMUM),
         'boolean':  if_subset(BOOLEAN, BOOLEAN, EXTREMUM),

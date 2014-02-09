@@ -30,7 +30,6 @@ class Function(object):
     """
 
     def __init__(self, bound_values, methods, name=None):
-        assert name
         self.bound_values = bound_values
         self.methods = methods
         self.name = name
@@ -169,14 +168,13 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
     """
-    The build in methods is special methods that does not contain a
-    subflow. These entities is therefor build in and unchangeable.
+    The build in methods is special methods that does not contain a subflow.
+    These entities is therefor build in and unchangeable.
 
-    A build in method has two attributes a :attr:`argmap` and a
-    :attr:`code` attribute. The argmap is the argumentnames in the
-    oder in which that they should be called oppon the lower hardwar
-    leves. The code attribute is the buildin name, which can be used
-    when building backends.
+    A build in method has two attributes a :attr:`argmap` and a :attr:`code`
+    attribute. The argmap is the argumentnames in the oder in which that they
+    should be called oppon the lower hardwar leves. The code attribute is the
+    buildin name, which can be used when building backends.
     """
 
     is_buildin = True
@@ -272,9 +270,9 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         :returns:
             Whatever the visitor returns
         """
-        return self.visit_all(visitor, initial)[self]
+        return self._visit(visitor, initial)[self]
 
-    def visit_all(self, visitor, initial):
+    def _visit(self, visitor, initial):
         """ Returns the internal mapping for the visitor """
         mapping = dict(initial)
         for visit_node in reversed(self.precedes()):
@@ -338,7 +336,7 @@ class ReduceNode(namedtuple('ReduceNode', [
     dependencies = Node.dependencies
     precedes = Node.precedes
     visit = Node.visit
-    visit_all = Node.visit_all
+    _visit = Node._visit
     clean = Node.clean
 
     def evaluate(self, analysis, sources):
