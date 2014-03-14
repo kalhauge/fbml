@@ -30,6 +30,7 @@ def test_mul_if_less_free_vars():
     """ Test if the free vars of MUL_IF_LESS is "number" """
     assert_equal(MUL_IF_LESS.free_variables(), {'number'})
 
+
 def test_bind_variables():
     """
     Test binding of values
@@ -71,6 +72,20 @@ def test_variables():
     method = Method(node('x'), node('y'))
     variables = method.variables()
     assert_equal(variables, {'x', 'y'})
+
+
+def test_variables_with_internal_nodes():
+    """
+    Testing that the variables of methods is returned correctly, even
+    with internal nodes
+    """
+    from fbml import buildin
+    method = Method(
+        node(buildin.lt,  {'a': node('number'), 'b': node('const')}),
+        node(buildin.mul, {'a': node('number'), 'b': node('const')})
+    )
+    variables = method.variables()
+    assert_equal(variables, {'number', 'const'})
 
 
 def test_depenencies():
