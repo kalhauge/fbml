@@ -68,15 +68,17 @@ def test_bind_variables_bad_bound():
 def test_node_creation():
     """ tests that nodes is created correctly """
     function = Mock(name="function")
-    names = tuple(Mock(name="name" + str(i)) for i in range(3))
-    nodes = tuple(Mock(name="node" + str(i)) for i in range(3))
+    names = tuple("name" + str(i) for i in range(3))
+    nodes = tuple("node" + str(i) for i in range(3))
     dictionary = dict(zip(names, nodes))
     assert_equal(Node(function, zip(names, nodes)), node(function, dictionary))
 
 def test_node_equality():
-    names = tuple(Mock(name="name" + str(i)) for i in range(3))
-    nodes = tuple(Mock(name="node" + str(i)) for i in range(3))
-    assert_equal(node(None, zip(names, nodes)), node(None, reversed(zip(names, nodes)))
+    """ Enusre that nodes created with same sources is equal """
+    names = tuple("name" + str(i) for i in range(3))
+    nodes = tuple("node" + str(i) for i in range(3))
+    sources = list(zip(names, nodes))
+    assert_equal(node(None, sources), node(None, reversed(sources)))
 
 def test_variables():
     """
@@ -89,8 +91,7 @@ def test_variables():
 
 def test_variables_with_internal_nodes():
     """
-    Testing that the variables of methods is returned correctly, even
-    with internal nodes
+    Testing that variables is retured correctly, with internal nodes
     """
     from fbml import buildin
     method = Method(
@@ -113,12 +114,12 @@ def test_depenencies_multible():
     """
     Test multible dependencies
     """
-    n2 = Node(None, (node('x'), node('y')), None)
+    n2 = Node(None, ((0, node('x')), (1, node('y'))))
     assert_equal(n2.dependencies(), {'x', 'y'})
 
 if __name__ == '__main__':
     import nose
     nose.runmodule(
-        argv=[__file__, '-vvs', '-x', '--pdb', 'pdb-failure'],
+        argv=[__file__, '-vvs', '-x', '--pdb'],
         exit=False
     )

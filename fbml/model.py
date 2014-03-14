@@ -217,10 +217,24 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
         return self.code
 
 
-class Node (namedtuple('Node', ['function', 'sources', 'names'])):
+
+
+
+class Node (namedtuple('Node', ['function', 'named_sources'])):
     """
     Node, if the function is load, then the sources are allowed to be a string
     """
+
+    Source = namedtuple('Source', ['name', 'node'])
+
+    def __new__(cls, function, sources):
+        """
+        New sorts the sources and puts them in the Source folder for later ease of
+        test of equality
+        """
+        named_sources = (cls.Source(name, node) for name, node in sources)
+        sorted_sources = tuple(sorted(named_sources, key=lambda source: source.name))
+        return super(Node, cls).__new__(cls, function, sorted_sources)
 
     def dependencies(self):
         """
@@ -231,6 +245,14 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         return {
             source for source in sources if not isinstance(source, Node)
         }
+
+    @property
+    def names(self):
+        return (source.name for source in self.named_sources)
+
+    @property
+    def sources(self):
+        return (source.node for source in self.named_sources)
 
     def precedes(self):
         """
@@ -331,12 +353,15 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
             self.names)
 
     def __repr__(self):
-        return 'Node %s: %r' % (self[0].code, self.sources)
+        return 'Node %s: %s' % (
+            self[0].code,
+            ', '.join("%r=%r" % s for s in self.named_sources)
+        )
 
     @property
     def code(self):
         """ returns the code of the node """
-        return hex(id(self))
+        return 'n' + hex(id(self))
 
 
 class ReduceNode(namedtuple('ReduceNode', [

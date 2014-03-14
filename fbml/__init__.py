@@ -12,11 +12,17 @@ from fbml import buildin
 
 
 def node(function, sources=None):
-    """ Returns a node """
+    """ Returns a node
+
+    :param function: A function, or a string indicating which
+        source to load
+
+    :param sources: a dict like object
+    """
     if not sources and isinstance(function, str):
-        return model.Node(buildin.load, ('a', function))
+        return model.Node(buildin.load, [('a', function)])
     else:
-        return model.Node(function, sources.items())
+        return model.Node(function, dict(sources).items())
 
 
 def renode(function, reduction, sources):
