@@ -112,15 +112,13 @@ ListType = namedtuple('ListType', ['type'])
 
 class TypeSet (object):
 
-    Type = namedtuple('Type', ['name', 'size'])
-
     integer = BasicType('Integer')
     boolean = BasicType('Boolean')
     real = BasicType('Real')
 
-    INTEGER = frozenset({int64})
-    BOOLEAN = frozenset({bool_})
-    REAL = frozenset({real64})
+    INTEGER = frozenset({integer})
+    BOOLEAN = frozenset({boolean})
+    REAL = frozenset({real})
 
     INTEGER_LIST = frozenset({ListType(integer)})
     REAL_LIST = frozenset({ListType(real)})
