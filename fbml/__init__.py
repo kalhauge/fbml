@@ -14,13 +14,9 @@ from fbml import buildin
 def node(function, sources=None):
     """ Returns a node """
     if not sources and isinstance(function, str):
-        return model.Node(buildin.load, (function,), ('a', ))
+        return model.Node(buildin.load, ('a', function))
     else:
-        return model.Node(
-            function,
-            tuple(sources),
-            tuple(sources.values())
-        )
+        return model.Node(function, sources.items())
 
 
 def renode(function, reduction, sources):
