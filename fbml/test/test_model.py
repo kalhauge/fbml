@@ -67,12 +67,16 @@ def test_bind_variables_bad_bound():
 
 def test_node_creation():
     """ tests that nodes is created correctly """
-    function = Mock()
-    names = tuple(Mock() for _ in range(3))
-    nodes = tuple(Mock() for _ in range(3))
+    function = Mock(name="function")
+    names = tuple(Mock(name="name" + str(i)) for i in range(3))
+    nodes = tuple(Mock(name="node" + str(i)) for i in range(3))
     dictionary = dict(zip(names, nodes))
-    assert_equal(Node(function, nodes, names), node(function, dictionary))
+    assert_equal(Node(function, zip(names, nodes)), node(function, dictionary))
 
+def test_node_equality():
+    names = tuple(Mock(name="name" + str(i)) for i in range(3))
+    nodes = tuple(Mock(name="node" + str(i)) for i in range(3))
+    assert_equal(node(None, zip(names, nodes)), node(None, reversed(zip(names, nodes)))
 
 def test_variables():
     """
