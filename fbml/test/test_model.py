@@ -1,7 +1,5 @@
 """
-
 Tests of fbml.model
-
 """
 from fbml.model import Function, Method, Node, BadBound
 from fbml import node
@@ -9,6 +7,8 @@ from fbml import node
 from fbml.test import MUL_IF_LESS
 
 from nose.tools import assert_equal, assert_raises
+
+from unittest.mock import Mock
 
 
 def test_function_free_vars():
@@ -65,6 +65,15 @@ def test_bind_variables_bad_bound():
         function.bind_variables({'y': 10})
 
 
+def test_node_creation():
+    """ tests that nodes is created correctly """
+    function = Mock()
+    names = tuple(Mock() for _ in range(3))
+    nodes = tuple(Mock() for _ in range(3))
+    dictionary = dict(zip(names, nodes))
+    assert_equal(Node(function, nodes, names), node(function, dictionary))
+
+
 def test_variables():
     """
     Testing that the variables of methods is returned correctly.
@@ -102,3 +111,10 @@ def test_depenencies_multible():
     """
     n2 = Node(None, (node('x'), node('y')), None)
     assert_equal(n2.dependencies(), {'x', 'y'})
+
+if __name__ == '__main__':
+    import nose
+    nose.runmodule(
+        argv=[__file__, '-vvs', '-x', '--pdb', 'pdb-failure'],
+        exit=False
+    )
