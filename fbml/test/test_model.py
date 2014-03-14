@@ -6,6 +6,8 @@ Tests of fbml.model
 from fbml.model import Function, Method, Node, BadBound
 from fbml import node
 
+from fbml.test import MUL_IF_LESS
+
 from nose.tools import assert_equal, assert_raises
 
 
@@ -23,6 +25,10 @@ def test_function_free_vars():
     free_vars = function.free_variables()
     assert_equal(free_vars, {'z', 'y'})
 
+
+def test_mul_if_less_free_vars():
+    """ Test if the free vars of MUL_IF_LESS is "number" """
+    assert_equal(MUL_IF_LESS.free_variables(), {'number'})
 
 def test_bind_variables():
     """
