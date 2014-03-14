@@ -21,7 +21,18 @@ L = logging.getLogger(__name__)
 
 
 class BadBound(Exception):
-    """ Bad bound error """
+    """ Bad bound error, cast if there is an inconsistence between
+        free_variables and arguments.
+    """
+    def __init__(self, function, free_variables, arguments):
+        super(BadBound, self).__init__()
+        self.function = function
+        self.free_variables = free_variables
+        self.arguments = arguments
+
+    def __str__(self):
+        return ("In Function {s.function} with {s.free_variables} free, " +
+                "received arguments {s.arguments}").format(s=self)
 
 
 class Function(object):
@@ -67,15 +78,17 @@ class Function(object):
 
         :raises BadBound:
             Exception if that arguments is not filling the entire free_variable
-            space, or if in overlapping with the allready bound variables
+            space, or if in overlapping with the allready bound variables.
+            For more infomation see :class:`BadBound`.
 
         :returns:
             A dictionary with all the bound values, a union of the already
             bound values of the function, and the presented arguments. All
             values presented in a format allowed by the transform
         """
-        if self.free_variables() != set(arguments):
-            raise BadBound(arguments)
+        free_variables = self.free_variables()
+        if free_variables != set(arguments):
+            raise BadBound(self, free_variables, arguments)
         return {
             name: transform(value) for name, value in
             chain(arguments.items(), self.bound_values.items())
@@ -111,9 +124,9 @@ class Function(object):
         return Function(self.bound_values, good_methods, self.name)
 
     def __str__(self):
-        return 'Function(\n    %s,\n    %s\n)' % (
-            self.bound_values,
-            str(self.methods).replace('\n', '\n    '))
+        return self.code
+        # return 'Function(\n    %s,\n    %s\n)' % ( self.bound_values,
+        #   str(self.methods).replace('\n', '\n    '))
 
     @property
     def code(self):
