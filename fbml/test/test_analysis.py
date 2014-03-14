@@ -37,6 +37,7 @@ def test_incr_type_set_clean():
     point_of_interest = function.methods[0].statement.function.methods
     assert point_of_interest == [buildin.i_add]
 
+
 def test_multiply_finite_set_clean_gt():
     """ This example tests cleaning of mul_if_lees if greater that 10"""
     function = MUL_IF_LESS.clean(FiniteSet, {'number': 11})
@@ -45,6 +46,7 @@ def test_multiply_finite_set_clean_gt():
 
     point_of_interest = function.methods[0].statement.function
     assert point_of_interest.methods == buildin.load.methods
+
 
 def test_multiply_finite_set_clean_le():
     """ This example tests the cleaning of multiply, if less or equal to 10"""
