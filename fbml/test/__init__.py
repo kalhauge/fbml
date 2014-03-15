@@ -27,7 +27,7 @@ MUL_IF_LESS = Function(
             node(buildin.mul, {'a': node('number'), 'b': node('const')})
         ),
         Method(
-            node(buildin.ge,  {'a': node('number'), 'b': node('number')}),
+            node(buildin.ge,  {'a': node('number'), 'b': node('const')}),
             node('number')
         )
     ],

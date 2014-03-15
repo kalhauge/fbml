@@ -217,9 +217,6 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
         return self.code
 
 
-
-
-
 class Node (namedtuple('Node', ['function', 'named_sources'])):
     """
     Node, if the function is load, then the sources are allowed to be a string
@@ -314,13 +311,13 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
             try:
                 sources = tuple(mapping[s] for s in visit_node.sources)
                 mapping[visit_node] = visitor(visit_node, sources)
-            except KeyError:
-                L.error("KeyError: %s, %s", visit_node, mapping)
+            except KeyError as e:
+                L.error("When visiting (%r) recieved %r in %s", visit_node, e, mapping)
                 raise
         return mapping
 
     def evaluate(self, analysis, sources):
-        return self.function(analysis, sources)
+        return self.function.evaluate(analysis, sources)
 
     def evaluate_all(self, analysis, initial):
         return self.visit(
@@ -337,31 +334,34 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
 
         def cleanup(node, sources):
             results, nodes = zip(*sources)
-            values = node.project(results)
-            new_function = node.function.clean(analysis, values)
+            projected = node.project(results)
+            new_function = node.function.clean(analysis, projected)
+            values = {source: projected[name] for name, source in node.named_sources}
             result = node.evaluate_all(analysis, values)
-            return (result, Node(new_function, nodes, node.names))
+            return (result, Node(new_function, zip(node.names, nodes)))
 
         return self.visit(cleanup, mapping)
 
     def __str__(self):
-        return 'Node %s:\n    %s,\n    %s\n)' % (
-            self.function.code + str(self.function.methods),
-            ('(\n    ' + ',\n    '.join(
-                repr(source) for source in self.sources
-            ) + '\n)').replace('\n', '\n    '),
-            self.names)
+        return self.code
+#         return 'Node %s:\n    %s,\n    %s\n)' % (
+#             self.function.code + str(self.function.methods),
+#             ('(\n    ' + ',\n    '.join(
+#                 repr(source) for source in self.sources
+#             ) + '\n)').replace('\n', '\n    '),
+#             self.names)
 
     def __repr__(self):
-        return 'Node %s: %s' % (
+        return '%s %s: %s' % (
+            self.code,
             self[0].code,
-            ', '.join("%r=%r" % s for s in self.named_sources)
+            ', '.join("%r <- (%s)" % s for s in self.named_sources)
         )
 
     @property
     def code(self):
         """ returns the code of the node """
-        return 'n' + hex(id(self))
+        return 'n_' + hex(id(self))
 
 
 class ReduceNode(namedtuple('ReduceNode', [
