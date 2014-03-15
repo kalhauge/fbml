@@ -11,8 +11,7 @@ from fbml import model
 
 class Visitor(object):
 
-    def __init__(self, extremum):
-        self.extremum = extremum
+    extremum = None
 
     def transform(self, value):
         """
@@ -43,6 +42,16 @@ class Visitor(object):
         """
         return method(arguments)
 
+    @classmethod
+    def run(cls, function, **arguments):
+        return cls().call(function, **arguments)
+
+    def call(self, function, **arguments):
+        return self.visit_function(
+            function, {
+                name: self.transform(arg) for name, arg in arguments.items()
+            })
+
     def visit_function(self, function, arguments):
         """ visits a function
 
@@ -53,7 +62,7 @@ class Visitor(object):
             arguments to the function.
         """
         try:
-            initial = function.evalutate(arguments, self.transform)
+            initial = function.bind_variables(arguments, self.transform)
         except model.BadBound:
             # For now do nothing
             raise
@@ -89,6 +98,7 @@ class Visitor(object):
         for visit_node in reversed(node.precedes()):
             sources = tuple(mapping[s] for s in visit_node.sources)
             mapping[visit_node] = self.visit_node(visit_node, sources)
+        return mapping[node]
 
     def visit_node(self, node, sources):
         """ visits a node
@@ -97,4 +107,4 @@ class Visitor(object):
 
         :param sources: The sources in order
         """
-        self.visit_function(node.function, sources)
+        return self.visit_function(node.function, node.project(sources))

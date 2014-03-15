@@ -13,7 +13,7 @@ def test_multiply_finite_set():
     """
     this example test a simple mulitply, tested with FiniteSet
     """
-    value = MUL_IF_LESS.evaluate(FiniteSet, {'number': 2})
+    value = FiniteSet.run(MUL_IF_LESS, number=2)
     assert value == FiniteSet.const(20), str(value)
 
 
@@ -21,13 +21,13 @@ def test_multiply_type_set():
     """
     this example test a simple mulitply, tested with TypeSet
     """
-    value = MUL_IF_LESS.evaluate(TypeSet, {'number': 2})
+    value = TypeSet.run(MUL_IF_LESS, number=2)
 
     assert value == TypeSet.const(20), str(value)
     assert value == TypeSet.INTEGER,  str(value)
 
-    value = MUL_IF_LESS.evaluate(TypeSet, {'number': 2.0})
-    assert value == TypeSet.EXTREMUM, str(value)
+    value = TypeSet.run(MUL_IF_LESS, number=2.0)
+    assert value == TypeSet.extremum, str(value)
 
 
 def test_incr_type_set_clean():
