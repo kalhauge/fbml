@@ -358,7 +358,11 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
         return self.visit(cleanup, mapping)
 
     def __str__(self):
-        return self.code
+        if self.function.code == 'load':
+            return self.named_sources[0].node
+        return "({0.function.code} {args})".format(
+            self, args=" ".join("%s=%s" % s for s in self.named_sources)
+        )
 
     @property
     def code(self):

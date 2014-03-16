@@ -115,6 +115,25 @@ class MethodTester (TestCase):
 
 class NodeTester (TestCase):
 
+    def test_repr(self):
+        n = node('a')
+        string = repr(n)
+        assert_equal(eval(string), n)
+
+    def test_str(self):
+        n = node('a')
+        assert_equal(str(n), 'a')
+
+    def test_str_lt(self):
+        from fbml import buildin
+        n = node(buildin.lt,  {'a': node('number'), 'b': node('const')})
+        assert_equal(str(n), '(lt a=number b=const)')
+
+    def test_str_function(self):
+        f = Function({}, [], 'a_function')
+        n = node(f,  {'a': node('number'), 'b': node('const')})
+        assert_equal(str(n), '(a_function a=number b=const)')
+
     def test_depenencies(self):
         """
         Test that dependencies is returned correctly
@@ -148,9 +167,6 @@ class UtilsTester (TestCase):
         nodes = tuple("node" + str(i) for i in range(3))
         sources = list(zip(names, nodes))
         assert_equal(node(None, sources), node(None, reversed(sources)))
-
-
-
 
 
 if __name__ == '__main__':
