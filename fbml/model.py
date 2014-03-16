@@ -35,15 +35,29 @@ class BadBound(Exception):
                 "received arguments {s.arguments}").format(s=self)
 
 
-class Function(object):
+class Function(namedtuple('Function', [
+        'bound_value_pairs', 'methods', 'name'])):
     """
     The top object of the bunch.
     """
+    BoundValue = namedtuple('BoundValue', ['name', 'value'])
+    BoundValue.__repr__ = lambda self: \
+        'Function.BoundValue(name={0.name!r}, value={0.value!r})'.format(self)
 
-    def __init__(self, bound_values, methods, name=None):
-        self.bound_values = bound_values
-        self.methods = methods
-        self.name = name
+    def __new__(cls, bound_value_pairs, methods, name=None):
+        # Assumes dictionary to simplify interface
+        bound_values = dict(bound_value_pairs).items()
+        items = tuple(sorted(bound_values, key=itemgetter(0)))
+        s = super(Function, cls).__new__(cls, items, tuple(methods), name)
+        s._hash = hash(s)
+        return s
+
+    def hash(self):
+        return self._hash
+
+    @property
+    def bound_values(self):
+        return dict(self.bound_value_pairs)
 
     def free_variables(self):
         """
@@ -59,7 +73,8 @@ class Function(object):
         """
 
         free_vars = [method.variables() for method in self.methods]
-        return set.union(*free_vars) - set(self.bound_values)
+        return (set.union(*free_vars) -
+                set(name for name, value in self.bound_value_pairs))
 
     def bind_variables(self, arguments, transform=lambda x: x):
         """
@@ -91,7 +106,7 @@ class Function(object):
             raise BadBound(self, free_variables, arguments)
         return {
             name: transform(value) for name, value in
-            chain(arguments.items(), self.bound_values.items())
+            chain(arguments.items(), self.bound_value_pairs)
         }
 
     def evaluate(self, analysis, arguments):
@@ -125,8 +140,6 @@ class Function(object):
 
     def __str__(self):
         return self.code
-        # return 'Function(\n    %s,\n    %s\n)' % ( self.bound_values,
-        #   str(self.methods).replace('\n', '\n    '))
 
     @property
     def code(self):
@@ -172,11 +185,7 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
         return Method(guard, statement)\
             if analysis.allow(test) and statement else None
 
-    def __repr__(self):
-        return "Method(\n    %s,\n    %s\n)" % (
-            str(self.guard).replace('\n', '\n    '),
-            str(self.statement).replace('\n', '\n    ')
-        )
+    __str__ = "Method({0.guard}, {0.statement})".format
 
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
@@ -213,7 +222,7 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
             tuple(initial[argname] for argname in self.argmap))
         return self if result else None
 
-    def __repr__(self):
+    def __str__(self):
         return self.code
 
 
@@ -223,14 +232,19 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
     """
 
     Source = namedtuple('Source', ['name', 'node'])
+    Source.__repr__ = lambda self: \
+        'Node.Source(name={0.name!r}, node={0.node!r})'.format(self)
 
-    def __new__(cls, function, sources):
+    def __new__(cls, function, named_sources):
         """
-        New sorts the sources and puts them in the Source folder for later ease of
-        test of equality
+        New sorts the sources and puts them in the Source folder for later ease
+        of test of equality
         """
-        named_sources = (cls.Source(name, node) for name, node in sources)
-        sorted_sources = tuple(sorted(named_sources, key=lambda source: source.name))
+        named_sources = (cls.Source(name, node)
+                         for name, node in named_sources)
+        sorted_sources = tuple(
+            sorted(named_sources, key=lambda source: source.name)
+        )
         return super(Node, cls).__new__(cls, function, sorted_sources)
 
     def dependencies(self):
@@ -344,19 +358,6 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
 
     def __str__(self):
         return self.code
-#         return 'Node %s:\n    %s,\n    %s\n)' % (
-#             self.function.code + str(self.function.methods),
-#             ('(\n    ' + ',\n    '.join(
-#                 repr(source) for source in self.sources
-#             ) + '\n)').replace('\n', '\n    '),
-#             self.names)
-
-    def __repr__(self):
-        return '%s %s: %s' % (
-            self.code,
-            self[0].code,
-            ', '.join("%r <- (%s)" % s for s in self.named_sources)
-        )
 
     @property
     def code(self):
