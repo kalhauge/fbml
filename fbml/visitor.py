@@ -5,42 +5,14 @@ Vistor consits of classes cabable of transversing the structure of the model,
 bringing with it an value of any sort.
 
 """
-
+from collections import namedtuple
+from functools import reduce
 from fbml import model
 
 
 class Visitor(object):
 
     extremum = None
-
-    def transform(self, value):
-        """
-        Given an value return a new value of the internal type, per default
-        just returns the value itself.
-        """
-        return value
-
-    def merge(self, first, second):
-        """
-        Merges two values as retured by methods. Should return a value of the
-        internal type. The default version returns the first value that is not
-        of the extremum.
-        """
-        return second if first == self.extremum else first
-
-    def allow(self, test):
-        """
-        Returns true or false depending on the test. In the default case we
-        asume that this is a boolean return it.
-        """
-        return test
-
-    def apply(self, method, arguments):
-        """
-        apply applies a method to the arguments, in the default case we hope
-        that the method is callable and call it with the arguments.
-        """
-        return method(arguments)
 
     @classmethod
     def run(cls, function, **arguments):
@@ -51,6 +23,20 @@ class Visitor(object):
             function, {
                 name: self.transform(arg) for name, arg in arguments.items()
             })
+
+    def allow(self, test):
+        """
+        Returns true or false depending on the test. In the default case we
+        asume that this is a boolean return it.
+        """
+        return test
+
+    def transform(self, value):
+        """
+        Given an value return a new value of the internal type, per default
+        just returns the value itself.
+        """
+        return value
 
     def visit_function(self, function, arguments):
         """ visits a function
@@ -67,11 +53,18 @@ class Visitor(object):
             # For now do nothing
             raise
         else:
-            work_value = self.extremum
-            for method in function.methods:
-                result = self.visit_method(method, initial)
-                work_value = self.merge(work_value, result)
-            return work_value
+            results = [
+                self.visit_buildin_method(method, initial) if method.is_buildin
+                else self.visit_method(method, initial)
+                for method in function.methods
+            ]
+            return self.exit_function(function, results)
+
+    def visit_buildin_method(self, method, initial):
+        return self.exit_buildin_method(
+            method,
+            tuple(initial[argname] for argname in method.argmap)
+        )
 
     def visit_method(self, method, initial):
         """ visits a method
@@ -81,16 +74,12 @@ class Visitor(object):
         :param initial: The inital free variables, these variables should
             be a superset of the real need values
         """
-        if method.is_buildin:
-            return self.apply(
-                method, tuple(initial[argname] for argname in method.argmap)
-            )
+        test_value = self.visit_nodes(method.guard, initial)
+        if self.allow(test_value):
+            nodes = self.visit_nodes(method.statement, initial)
+            return self.exit_method(method, test_value, nodes)
         else:
-            test_value = self.visit_nodes(method.guard, initial)
-            if self.allow(test_value):
-                return self.visit_nodes(method.statement, initial)
-            else:
-                return self.extremum
+            return self.extremum
 
     def visit_nodes(self, node, initial):
         """ visits a node tree """
@@ -107,4 +96,81 @@ class Visitor(object):
 
         :param sources: The sources in order
         """
-        return self.visit_function(node.function, node.project(sources))
+        function = self.visit_function(node.function, node.project(sources))
+        return self.exit_node(node, sources, function)
+
+    def exit_function(self, function, results):
+        raise NotImplementedError()
+
+    def exit_buildin_method(self, method, args):
+        raise NotImplementedError()
+
+    def exit_method(self, method, guard, statement):
+        raise NotImplementedError()
+
+    def exit_node(self, node, sources, function):
+        raise NotImplementedError()
+
+
+class Evaluator(Visitor):
+
+    def merge(self, first, second):
+        """
+        Merges two values as retured by methods. Should return a value of the
+        internal type. The default version returns the first value that is not
+        of the extremum.
+        """
+        return second if first == self.extremum else first
+
+    def merge_all(self, values):
+        """
+        Merges multible values at once, overload to get better controll over
+        the situation.
+        """
+        return reduce(self.merge, values, self.extremum)
+
+    def apply(self, method, arguments):
+        """
+        apply applies a method to the arguments, in the default case we hope
+        that the method is callable and call it with the arguments.
+        """
+        return method(arguments)
+
+    def exit_function(self, function, results):
+        return self.merge_all(results)
+
+    def exit_buildin_method(self, method, args):
+        return self.apply(method, args)
+
+    def exit_method(self, method, guard, statement):
+        return statement if self.allow(guard) else self.extremum
+
+    def exit_node(self, node, sources, function):
+        return function
+
+
+class Cleaner(Visitor):
+
+    """
+    A Cleaner is a special vistior that using an evalutor can create clean
+    methods and functions by removeing anything that is no reacable by the
+    evaluator. This means using an evaluator with an overapproxtion would
+    be the best way to go.
+
+    :param evaluator: The instanciated evaluator
+    """
+
+    Clean = namedtuple('Clean', ('result', 'tree'))
+
+    def __init__(self, evaluator):
+        self.evaluator = evaluator
+
+    def visit_function(self, function, arguments):
+        pass
+
+    def merge(self, first, second):
+        pass
+
+    def apply(self, method, arguments):
+        """ When applying somthing to a buildin_type means that is used"""
+        return (self.evaluator.apply(method, arguments), arguments)

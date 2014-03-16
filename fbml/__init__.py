@@ -22,7 +22,7 @@ def node(function, sources=None):
     if not sources and isinstance(function, str):
         return model.Node(buildin.load, [('a', function)])
     else:
-        assert isinstance(function, model.Function)
+        # assert isinstance(function, model.Function)
         return model.Node(function, dict(sources).items())
 
 

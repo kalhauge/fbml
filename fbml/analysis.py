@@ -34,7 +34,7 @@ def reflex(x):
     return x
 
 
-class FiniteSet (visitor.Visitor):
+class FiniteSet (visitor.Evaluator):
 
     METHOD_MAPPING = {
         'load': reflex,
@@ -106,7 +106,7 @@ CombinedType = namedtuple('CombinedType', ['types'])
 ListType = namedtuple('ListType', ['type'])
 
 
-class TypeSet (visitor.Visitor):
+class TypeSet (visitor.Evaluator):
 
     integer = BasicType('Integer')
     boolean = BasicType('Boolean')
