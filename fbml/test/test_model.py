@@ -92,60 +92,66 @@ class MethodTester (TestCase):
         string = repr(method)
         assert_equal(eval(string), method)
 
+    def test_variables():
+        """
+        Testing that the variables of methods is returned correctly.
+        """
+        method = Method(node('x'), node('y'))
+        variables = method.variables()
+        assert_equal(variables, {'x', 'y'})
 
-def test_node_creation():
-    """ tests that nodes is created correctly """
-    function = Mock(name="function")
-    names = tuple("name" + str(i) for i in range(3))
-    nodes = tuple("node" + str(i) for i in range(3))
-    dictionary = dict(zip(names, nodes))
-    assert_equal(Node(function, zip(names, nodes)), node(function, dictionary))
-
-
-def test_node_equality():
-    """ Enusre that nodes created with same sources is equal """
-    names = tuple("name" + str(i) for i in range(3))
-    nodes = tuple("node" + str(i) for i in range(3))
-    sources = list(zip(names, nodes))
-    assert_equal(node(None, sources), node(None, reversed(sources)))
-
-
-def test_variables():
-    """
-    Testing that the variables of methods is returned correctly.
-    """
-    method = Method(node('x'), node('y'))
-    variables = method.variables()
-    assert_equal(variables, {'x', 'y'})
+    def test_variables_with_internal_nodes():
+        """
+        Testing that variables is retured correctly, with internal nodes
+        """
+        from fbml import buildin
+        method = Method(
+            node(buildin.lt,  {'a': node('number'), 'b': node('const')}),
+            node(buildin.mul, {'a': node('number'), 'b': node('const')})
+        )
+        variables = method.variables()
+        assert_equal(variables, {'number', 'const'})
 
 
-def test_variables_with_internal_nodes():
-    """
-    Testing that variables is retured correctly, with internal nodes
-    """
-    from fbml import buildin
-    method = Method(
-        node(buildin.lt,  {'a': node('number'), 'b': node('const')}),
-        node(buildin.mul, {'a': node('number'), 'b': node('const')})
-    )
-    variables = method.variables()
-    assert_equal(variables, {'number', 'const'})
+class NodeTester (TestCase):
+
+    def test_depenencies():
+        """
+        Test that dependencies is returned correctly
+        """
+        n = node('x')
+        assert_equal(n.dependencies(), {'x'})
+
+    def test_depenencies_multible():
+        """
+        Test multible dependencies
+        """
+        n2 = Node(None, ((0, node('x')), (1, node('y'))))
+        assert_equal(n2.dependencies(), {'x', 'y'})
 
 
-def test_depenencies():
-    """
-    Test that dependencies is returned correctly
-    """
-    n = node('x')
-    assert_equal(n.dependencies(), {'x'})
+class UtilsTester (TestCase):
+
+    def test_node_creation():
+        """ tests that nodes is created correctly """
+        function = Mock(name="function")
+        names = tuple("name" + str(i) for i in range(3))
+        nodes = tuple("node" + str(i) for i in range(3))
+        dictionary = dict(zip(names, nodes))
+        assert_equal(
+            Node(function, zip(names, nodes)),
+            node(function, dictionary))
+
+    def test_node_equality():
+        """ Enusre that nodes created with same sources is equal """
+        names = tuple("name" + str(i) for i in range(3))
+        nodes = tuple("node" + str(i) for i in range(3))
+        sources = list(zip(names, nodes))
+        assert_equal(node(None, sources), node(None, reversed(sources)))
 
 
-def test_depenencies_multible():
-    """
-    Test multible dependencies
-    """
-    n2 = Node(None, ((0, node('x')), (1, node('y'))))
-    assert_equal(n2.dependencies(), {'x', 'y'})
+
+
 
 if __name__ == '__main__':
     import nose
