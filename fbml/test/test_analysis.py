@@ -7,6 +7,7 @@
 from fbml.test import MUL_IF_LESS, INCR
 from fbml.analysis import TypeSet, FiniteSet
 from fbml import buildin
+from fbml.visitor import Cleaner
 
 
 def test_multiply_finite_set():
@@ -32,15 +33,17 @@ def test_multiply_type_set():
 
 def test_incr_type_set_clean():
     """ This example tests the cleaning of INCR"""
-    function = INCR.clean(TypeSet, {'number': 10})
+    function = Cleaner(TypeSet()).call(INCR, number=10)
 
     point_of_interest = function.methods[0].statement.function.methods
     assert point_of_interest == [buildin.i_add]
 
 
 def test_multiply_finite_set_clean_gt():
-    """ This example tests cleaning of mul_if_lees if greater that 10"""
-    function = MUL_IF_LESS.clean(FiniteSet, {'number': 11})
+    """
+    This example tests cleaning of mul_if_lees if greater that or equal 10
+    """
+    function = Cleaner(FiniteSet()).call(MUL_IF_LESS, number=10)
 
     assert len(function.methods) == 1
 
@@ -49,8 +52,8 @@ def test_multiply_finite_set_clean_gt():
 
 
 def test_multiply_finite_set_clean_le():
-    """ This example tests the cleaning of multiply, if less or equal to 10"""
-    function = MUL_IF_LESS.clean(FiniteSet, {'number': 10})
+    """ This example tests the cleaning of multiply, if less than 10"""
+    function = Cleaner(FiniteSet()).call(MUL_IF_LESS, number=9)
 
     assert len(function.methods) == 1
 

@@ -7,6 +7,10 @@ bringing with it an value of any sort.
 """
 from collections import namedtuple
 from functools import reduce
+
+import logging
+L = logging.getLogger(__name__)
+
 from fbml import model
 
 
@@ -24,20 +28,6 @@ class Visitor(object):
                 name: self.transform(arg) for name, arg in arguments.items()
             })
 
-    def allow(self, test):
-        """
-        Returns true or false depending on the test. In the default case we
-        asume that this is a boolean return it.
-        """
-        return test
-
-    def transform(self, value):
-        """
-        Given an value return a new value of the internal type, per default
-        just returns the value itself.
-        """
-        return value
-
     def visit_function(self, function, arguments):
         """ visits a function
 
@@ -47,6 +37,7 @@ class Visitor(object):
             with. A dictionary containing the mapping from the values of the
             arguments to the function.
         """
+        L.debug("visit_function %s %s", function, arguments)
         try:
             initial = function.bind_variables(arguments, self.transform)
         except model.BadBound:
@@ -61,6 +52,7 @@ class Visitor(object):
             return self.exit_function(function, results)
 
     def visit_buildin_method(self, method, initial):
+        L.debug("visit_buildin_method %s %s", method, initial)
         return self.exit_buildin_method(
             method,
             tuple(initial[argname] for argname in method.argmap)
@@ -74,6 +66,7 @@ class Visitor(object):
         :param initial: The inital free variables, these variables should
             be a superset of the real need values
         """
+        L.debug("visit_method %s %s", method, initial)
         test_value = self.visit_nodes(method.guard, initial)
         if self.allow(test_value):
             nodes = self.visit_nodes(method.statement, initial)
@@ -83,6 +76,7 @@ class Visitor(object):
 
     def visit_nodes(self, node, initial):
         """ visits a node tree """
+        L.debug("visit_nodes %s %s", node, initial)
         mapping = dict(initial)
         for visit_node in reversed(node.precedes()):
             sources = tuple(mapping[s] for s in visit_node.sources)
@@ -96,8 +90,21 @@ class Visitor(object):
 
         :param sources: The sources in order
         """
+        L.debug("visit_node %s %s", node, sources)
         function = self.visit_function(node.function, node.project(sources))
         return self.exit_node(node, sources, function)
+
+    def allow(self, test):
+        """
+        Returns true or false depending on the test.
+        """
+        raise NotImplementedError()
+
+    def transform(self, value):
+        """
+        Given an value return a new value of the internal type.
+        """
+        raise NotImplementedError()
 
     def exit_function(self, function, results):
         raise NotImplementedError()
@@ -114,13 +121,16 @@ class Visitor(object):
 
 class Evaluator(Visitor):
 
+    def failed(self, result):
+        return result is self.extremum
+
     def merge(self, first, second):
         """
         Merges two values as retured by methods. Should return a value of the
         internal type. The default version returns the first value that is not
         of the extremum.
         """
-        return second if first == self.extremum else first
+        return second if self.failed(first) else first
 
     def merge_all(self, values):
         """
@@ -160,17 +170,55 @@ class Cleaner(Visitor):
     :param evaluator: The instanciated evaluator
     """
 
-    Clean = namedtuple('Clean', ('result', 'tree'))
+    Clean = namedtuple('Clean', ('model', 'result'))
 
     def __init__(self, evaluator):
         self.evaluator = evaluator
+        self.extremum = self.Clean(None, self.evaluator.extremum)
 
-    def visit_function(self, function, arguments):
-        pass
+    def call(self, function, **arguments):
+        return super(Cleaner, self).call(function, **arguments).model
 
-    def merge(self, first, second):
-        pass
+    def unzip(self, values):
+        return (
+            [value.model for value in values],
+            [value.result for value in values]
+        )
 
-    def apply(self, method, arguments):
-        """ When applying somthing to a buildin_type means that is used"""
-        return (self.evaluator.apply(method, arguments), arguments)
+    def transform(self, value):
+        if isinstance(value, self.Clean):
+            return value
+        else:
+            return self.Clean(value, self.evaluator.transform(value))
+
+    def allow(self, test):
+        return self.evaluator.allow(test.result) and not test.model
+
+    def exit_function(self, function, results):
+        models, results_ = self.unzip(results)
+        methods = [
+            method for method, result in results
+            if self.evaluator.failed(result)
+        ]
+        return self.Clean(
+            model.Function(function.bound_values, methods, function.name),
+            self.evaluator.exit_function(function, results_)
+        )
+
+    def exit_buildin_method(self, method, args):
+        models, results = self.unzip(args)
+        result = self.evaluator.exit_buildin_method(method, results)
+        return self.Clean(method, result)
+
+    def exit_method(self, method, guard, statement):
+        return self.Clean(
+            model.Method(guard.model, statement.model),
+            self.evaluator.exit_method(method, guard.result, statement.result)
+        )
+
+    def exit_node(self, node, sources, function):
+        models, results = self.unzip(sources)
+        return self.Clean(
+            model.Node(function.model, zip(node.names, models)),
+            self.evaluator.exit_node(node, results, function.result)
+        )
