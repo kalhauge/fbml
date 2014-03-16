@@ -92,7 +92,7 @@ class MethodTester (TestCase):
         string = repr(method)
         assert_equal(eval(string), method)
 
-    def test_variables():
+    def test_variables(self):
         """
         Testing that the variables of methods is returned correctly.
         """
@@ -100,7 +100,7 @@ class MethodTester (TestCase):
         variables = method.variables()
         assert_equal(variables, {'x', 'y'})
 
-    def test_variables_with_internal_nodes():
+    def test_variables_with_internal_nodes(self):
         """
         Testing that variables is retured correctly, with internal nodes
         """
@@ -115,14 +115,14 @@ class MethodTester (TestCase):
 
 class NodeTester (TestCase):
 
-    def test_depenencies():
+    def test_depenencies(self):
         """
         Test that dependencies is returned correctly
         """
         n = node('x')
         assert_equal(n.dependencies(), {'x'})
 
-    def test_depenencies_multible():
+    def test_depenencies_multible(self):
         """
         Test multible dependencies
         """
@@ -132,7 +132,7 @@ class NodeTester (TestCase):
 
 class UtilsTester (TestCase):
 
-    def test_node_creation():
+    def test_node_creation(self):
         """ tests that nodes is created correctly """
         function = Mock(name="function")
         names = tuple("name" + str(i) for i in range(3))
@@ -142,7 +142,7 @@ class UtilsTester (TestCase):
             Node(function, zip(names, nodes)),
             node(function, dictionary))
 
-    def test_node_equality():
+    def test_node_equality(self):
         """ Enusre that nodes created with same sources is equal """
         names = tuple("name" + str(i) for i in range(3))
         nodes = tuple("node" + str(i) for i in range(3))
