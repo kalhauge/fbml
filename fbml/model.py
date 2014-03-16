@@ -185,7 +185,8 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
         return Method(guard, statement)\
             if analysis.allow(test) and statement else None
 
-    __str__ = "Method({0.guard}, {0.statement})".format
+    def __str__(self):
+        return "{0.guard!s} -> {0.statement!s}".format(self)
 
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):

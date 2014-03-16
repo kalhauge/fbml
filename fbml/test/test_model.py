@@ -80,6 +80,19 @@ class FunctionTester(TestCase):
             function.bind_variables({'y': 10})
 
 
+class MethodTester (TestCase):
+
+    def test_str(self):
+        method = Method(node('a'), node('b'))
+        string = str(method)
+        assert_regexp_matches(string, 'a -> b')
+
+    def test_repr(self):
+        method = Method(node('a'), node('b'))
+        string = repr(method)
+        assert_equal(eval(string), method)
+
+
 def test_node_creation():
     """ tests that nodes is created correctly """
     function = Mock(name="function")
