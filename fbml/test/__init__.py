@@ -68,5 +68,25 @@ SUM_VECTORS = Function(
             })
         )
     ],
-    'add_one_to_all'
+    'sum_vectors'
+)
+
+SCALAR_PRODUCT = Function(
+    {'test': True, 'one': 1},
+    [
+        Method(
+            node('test'),
+            node(buildin.commit, {
+                'context': node(buildin.mul, {
+                    'a':  node(buildin.map_, {
+                        'list': node('avector')
+                    }),
+                    'b':  node(buildin.context, {
+                        'context': node('one')
+                    })
+                })
+            })
+        )
+    ],
+    'scalar_product'
 )
