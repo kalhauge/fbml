@@ -50,3 +50,23 @@ ADD_ONE_TO_ALL = Function(
     ],
     'add_one_to_all'
 )
+
+SUM_VECTORS = Function(
+    {'test': True},
+    [
+        Method(
+            node('test'),
+            node(buildin.commit, {
+                'context': node(buildin.add, {
+                    'a':  node(buildin.map_, {
+                        'list': node('avector')
+                    }),
+                    'b':  node(buildin.map_, {
+                        'list': node('bvector')
+                    })
+                })
+            })
+        )
+    ],
+    'add_one_to_all'
+)

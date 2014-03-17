@@ -15,6 +15,8 @@ from fbml import visitor
 def reflex(x):
     return x
 
+Map = namedtuple('Map', ['size', 'itr'])
+
 METHOD_MAPPING = {
     'load':   reflex,
     'i_neg':  opr.neg,
@@ -41,6 +43,9 @@ METHOD_MAPPING = {
     'boolean': lambda x: isinstance(x, bool),
     'integer': lambda x: x.__class__ == int,
     'real': lambda x: isinstance(x, float),
+
+    'map': lambda x: Map(len(x), iter(x)),
+    'commit': lambda x: tuple(x.itr)
 }
 
 
@@ -70,8 +75,20 @@ class Eval(visitor.Evaluator):
     def allow(self, test):
         return test is True
 
+    def argument_mapper(self, args):
+        try:
+            while True:
+                yield [next(a.itr) if isinstance(a, Map) else a for a in args]
+        except StopIteration:
+            pass
+
     def apply(self, method, args):
-        return METHOD_MAPPING[method.code](*args)
+        pymethod = METHOD_MAPPING[method.code]
+        mappers = [a for a in args if isinstance(a, Map)]
+        if mappers and method.code != 'commit':
+            mapped_args = self.argument_mapper(args)
+            return Map(mappers[0].size, (pymethod(*m_args) for m_args in mapped_args))
+        return pymethod(*args)
 
 #
 # Analysis

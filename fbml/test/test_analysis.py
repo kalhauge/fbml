@@ -5,31 +5,47 @@
 """
 from nose.tools import assert_equal
 
-from fbml.test import MUL_IF_LESS, INCR, ADD_ONE_TO_ALL
+from fbml.test import MUL_IF_LESS, INCR, ADD_ONE_TO_ALL, SUM_VECTORS
 from fbml.analysis import TypeSet, FiniteSet, Eval
 from fbml import buildin
 from fbml.visitor import Cleaner
 
+from unittest import TestCase
 
-def test_mul_if_less():
-    assert_equal(Eval.run(MUL_IF_LESS, number=2), 20)
-    assert_equal(Eval.run(MUL_IF_LESS, number=2.0), 20.0)
-    assert_equal(Eval.run(MUL_IF_LESS, number=10), 10)
+class EvalTester(TestCase):
 
+    def test_mul_if_less(self):
+        assert_equal(Eval.run(MUL_IF_LESS, number=2), 20)
+        assert_equal(Eval.run(MUL_IF_LESS, number=2.0), 20.0)
+        assert_equal(Eval.run(MUL_IF_LESS, number=10), 10)
 
-def test_incr():
-    assert_equal(Eval.run(INCR, number=2), 3)
-    assert_equal(Eval.run(INCR, number=10), 11)
+    def test_incr(self):
+        assert_equal(Eval.run(INCR, number=2), 3)
+        assert_equal(Eval.run(INCR, number=10), 11)
 
+    def test_add_one_to_all_zero(self):
+        assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=tuple()), tuple())
 
-def test_add_one_to_all():
-    assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=[]), [])
-    assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=[1]), [2])
-    assert_equal(
-        Eval.run(ADD_ONE_TO_ALL, numbers=[1, 2, 3, 4, 5, 8, 2]),
-        [2, 3, 4, 5, 6, 9, 3]
-    )
+    def test_add_one_to_all_one(self):
+        assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=(1,)), (2, ))
 
+    def test_add_one_to_all_many(self):
+        assert_equal(
+            Eval.run(ADD_ONE_TO_ALL, numbers=(1, 2, 3, 4, 5, 8, 2)),
+            (2, 3, 4, 5, 6, 9, 3)
+        )
+
+    def test_sum_vectors_zero(self):
+        assert_equal(Eval.run(SUM_VECTORS, avector=tuple(), bvector=tuple()), tuple())
+
+    def test_sum_vectors_one(self):
+        assert_equal(Eval.run(SUM_VECTORS, avector=(1,), bvector= (3, )), (4, ))
+
+    def test_sum_vectors_many(self):
+        assert_equal(Eval.run(SUM_VECTORS, avector=(1, 2, 3), bvector=(5, 0, -1)), (6, 2, 2))
+
+    def test_sum_vectors_many_real(self):
+        assert_equal(Eval.run(SUM_VECTORS, avector=(1.0, 2.0, 3.0), bvector=(5.0, 0.0, -1.0)), (6.0, 2.0, 2.0))
 
 def test_multiply_finite_set():
     """
