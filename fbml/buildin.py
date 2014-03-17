@@ -47,6 +47,9 @@ map_ = Function({}, [m_map], 'map')
 m_commit = BuildInMethod(('context',), 'commit')
 commit = Function({}, [m_commit], 'commit')
 
+m_reduce= BuildInMethod(('initial',), 'reduce')
+reduce = Function({}, [m_context], 'reduce')
+
 load = Function({}, [load], 'load')
 not_ = Function({}, [b_not], 'not')
 and_ = Function({}, [b_and], 'and')

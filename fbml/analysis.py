@@ -15,7 +15,9 @@ from fbml import visitor
 def reflex(x):
     return x
 
-Map = namedtuple('Map', ['size', 'itr'])
+Reductor = namedtuple('Reductor', ['initial'])
+Map = namedtuple('Map', ['size', 'list'])
+Context = namedtuple('Context', ['args', 'trace'])
 
 METHOD_MAPPING = {
     'load':   reflex,
@@ -43,11 +45,7 @@ METHOD_MAPPING = {
     'boolean': lambda x: isinstance(x, bool),
     'integer': lambda x: x.__class__ == int,
     'real': lambda x: isinstance(x, float),
-
-    'map': lambda x: Map(len(x), iter(x)),
-    'commit': lambda x: tuple(x.itr)
 }
-
 
 class Eval(visitor.Evaluator):
     """
@@ -83,12 +81,30 @@ class Eval(visitor.Evaluator):
             pass
 
     def apply(self, method, args):
-        pymethod = METHOD_MAPPING[method.code]
-        mappers = [a for a in args if isinstance(a, Map)]
-        if mappers and method.code != 'commit':
-            mapped_args = self.argument_mapper(args)
-            return Map(mappers[0].size, (pymethod(*m_args) for m_args in mapped_args))
-        return pymethod(*args)
+        if method.code == 'reduce':
+            return Context((method.code, Reductor(args[0])), node(method.code))
+        else if method.code == 'map':
+            return Context((method.code, Map(len(args[0]), args[0])), node(method.code))
+        else if method.code == 'commit':
+            context = args[0]
+            context.trace
+                next_value = arg.initial
+                while not self.failed(next_value):
+                    value = next_value
+                    next_value = self.call(arg.backtrack, bt=value)
+                return value
+            else:
+                raise Exception()
+        else:
+            pymethod = METHOD_MAPPING[method.code]
+            mappers = [a for a in args if isinstance(a, Map)]
+            if mappers:
+                mapped_args = self.argument_mapper(args)
+                return Map(
+                    mappers[0].size,
+                    (pymethod(*m_args) for m_args in mapped_args)
+                    )
+            return pymethod(*args)
 
 #
 # Analysis

@@ -81,8 +81,8 @@ SCALAR_PRODUCT = Function(
                     'a':  node(buildin.map_, {
                         'list': node('avector')
                     }),
-                    'b':  node(buildin.context, {
-                        'context': node('one')
+                    'b':  node(buildin.reduce, {
+                        'initial': node('one')
                     })
                 })
             })
