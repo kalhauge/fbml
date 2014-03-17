@@ -6,7 +6,7 @@ The tests
 
 from fbml.model import Method, Function
 from fbml import buildin
-from fbml import node
+from fbml import node, statement
 
 INCR = Function(
     {'test': True, 'value': 1},
@@ -39,6 +39,7 @@ ADD_ONE_TO_ALL = Function(
     [
         Method(
             node('test'),
+            renode(Function( {'test' : True }, [Method(node('test'), node('append', {'list': node('reductor'), 'elem': node(INCR, 'number':node('number') )
             node(buildin.commit, {
                 'context': node(INCR, {
                     'number':  node(buildin.map_, {
@@ -49,6 +50,24 @@ ADD_ONE_TO_ALL = Function(
         )
     ],
     'add_one_to_all'
+)
+
+ADD_TO_ALL = statement(
+    {'empty' : tuple() }
+    renode(
+        statement(
+            node('append', {
+                'list': node('reductor'),
+                'elem': node(INCR, {
+                    'number': node('number')
+                })
+            })
+        ),
+        {'reductor': node('empty')}, # Reductor
+        {'number': node('numbers')}, # Maps
+        {'increment': node('increment')} #Variables
+    ),
+    'add_to_all'
 )
 
 SUM_VECTORS = Function(

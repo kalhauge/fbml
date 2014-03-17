@@ -24,3 +24,10 @@ def node(function, sources=None):
     else:
         # assert isinstance(function, model.Function)
         return model.Node(function, dict(sources).items())
+
+def statement(s_node, name=None, consts={}):
+    """ Returns a simple function with a single node, that always is run"""
+    real_consts = {'test' : True }
+    real_consts.update(consts)
+    return Function(consts, [Method(node('test'), s_node)], name)
+
