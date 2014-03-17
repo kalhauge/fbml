@@ -14,7 +14,6 @@ The function is a holder of bound_values, ei. constants, and a set of methods.
 from itertools import chain
 from operator import itemgetter
 from collections import namedtuple, deque
-from functools import reduce
 
 import logging
 L = logging.getLogger(__name__)
@@ -109,35 +108,6 @@ class Function(namedtuple('Function', [
             chain(arguments.items(), self.bound_value_pairs)
         }
 
-    def evaluate(self, analysis, arguments):
-        """
-        Evaluates the function, by runing the methods using the arguments,
-        the analysis is provided to describe how this is handled.
-        """
-        initial = self.bind_variables(arguments, analysis.transform)
-        return reduce(
-            analysis.merge,
-            (method.evaluate(analysis, initial) for method in self.methods),
-            analysis.EXTREMUM
-        )
-
-    def clean(self, analysis, arguments):
-        """
-        Cleans a function by returning a function, that do not contain
-        unrachable methods, if executed from the arguments.  The cleaning is
-        done recursively.
-        """
-        initial = self.bind_variables(arguments, analysis.transform)
-        cleaned_methods = [
-            method.clean(analysis, initial) for method in self.methods
-        ]
-        good_methods = [method for method in cleaned_methods if method]
-        L.debug('CLEAN: %s(%s) -> %s -> %s',
-                self.code,
-                ', '.join('%s=%s' % x for x in initial.items()),
-                cleaned_methods, good_methods)
-        return Function(self.bound_values, good_methods, self.name)
-
     def __str__(self):
         return "{0.code}[{methods}]".format(
             self, methods=', '.join(str(method) for method in self.methods)
@@ -175,18 +145,6 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
             ) if not isinstance(node, Node)
         )
 
-    def evaluate(self, analysis, initial):
-        assert self.variables().issubset(initial)
-        test_value = self.guard.evaluate_all(analysis, initial)
-        return self.statement.evaluate_all(analysis, initial)\
-            if analysis.allow(test_value) else analysis.EXTREMUM
-
-    def clean(self, analysis, initial):
-        test, guard = self.guard.clean(analysis, initial)
-        result, statement = self.statement.clean(analysis, initial)
-        return Method(guard, statement)\
-            if analysis.allow(test) and statement else None
-
     def __str__(self):
         return "{0.guard!s} -> {0.statement!s}".format(self)
 
@@ -212,18 +170,6 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
         :returns: the variables used by the method.
         """
         return set(self.argmap)
-
-    def evaluate(self, analysis, initial):
-        return analysis.apply(
-            self,
-            tuple(initial[argname] for argname in self.argmap)
-        )
-
-    def clean(self, analysis, initial):
-        result = analysis.apply(
-            self,
-            tuple(initial[argname] for argname in self.argmap))
-        return self if result else None
 
     def __str__(self):
         return self.code
@@ -305,60 +251,6 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
         """
         return dict(zip(self.names, values))
 
-    def visit(self, visitor, initial):
-        """
-        A visitor for nodes.
-
-        :param visitor:
-            Is the function that for each node returns anything.  The visitor
-            must accept a node, and a dictionary maping the old nodes to new
-            values::
-
-                visitor :=  Node x ?**k -> ?
-
-        :returns:
-            Whatever the visitor returns
-        """
-        return self._visit(visitor, initial)[self]
-
-    def _visit(self, visitor, initial):
-        """ Returns the internal mapping for the visitor """
-        mapping = dict(initial)
-        for visit_node in reversed(self.precedes()):
-            try:
-                sources = tuple(mapping[s] for s in visit_node.sources)
-                mapping[visit_node] = visitor(visit_node, sources)
-            except KeyError as e:
-                L.error("When visiting (%r) recieved %r in %s", visit_node, e, mapping)
-                raise
-        return mapping
-
-    def evaluate(self, analysis, sources):
-        return self.function.evaluate(analysis, sources)
-
-    def evaluate_all(self, analysis, initial):
-        return self.visit(
-            lambda node, sources: node.evaluate(
-                analysis, node.project(sources)
-            ),
-            initial
-        )
-
-    def clean(self, analysis, initial):
-        mapping = {
-            name: (val, name) for name, val in initial.items()
-        }
-
-        def cleanup(node, sources):
-            results, nodes = zip(*sources)
-            projected = node.project(results)
-            new_function = node.function.clean(analysis, projected)
-            values = {source: projected[name] for name, source in node.named_sources}
-            result = node.evaluate_all(analysis, values)
-            return (result, Node(new_function, zip(node.names, nodes)))
-
-        return self.visit(cleanup, mapping)
-
     def __str__(self):
         if self.function.code == 'load':
             return str(self.named_sources[0].node)
@@ -370,33 +262,3 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
     def code(self):
         """ returns the code of the node """
         return 'n_' + hex(id(self))
-
-
-class ReduceNode(namedtuple('ReduceNode', [
-    'function',
-    'reduction',
-    'names',
-    'sources'
-])):
-
-    dependencies = Node.dependencies
-    precedes = Node.precedes
-    visit = Node.visit
-    _visit = Node._visit
-    clean = Node.clean
-
-    def evaluate(self, analysis, sources):
-        return analysis.reduce(self.function, self.reduction, sources)
-
-    evaluate_all = Node.evaluate_all
-
-    def __str__(self):
-        return 'ReduceNode %s:\n    %s,\n    %s\n)' % (
-            self.function.code + str(self.function.methods),
-            ('(\n    ' + ',\n    '.join(
-                repr(source) for source in self.sources
-            ) + '\n)').replace('\n', '\n    '),
-            self.names)
-
-    def __repr__(self):
-        return 'ReduceNode %s: %r' % (self[0].code, self.sources)

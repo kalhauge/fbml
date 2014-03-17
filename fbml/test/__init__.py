@@ -6,7 +6,7 @@ The tests
 
 from fbml.model import Method, Function
 from fbml import buildin
-from fbml import node, renode
+from fbml import node
 
 INCR = Function(
     {'test': True, 'value': 1},
@@ -32,22 +32,4 @@ MUL_IF_LESS = Function(
         )
     ],
     'mul_if_less'
-)
-
-SCALAR_PRODUCT = Function(
-    {'test': True},
-    [
-        Method(
-            node('test'),
-            renode(
-                buildin.add,
-                ('b', node('sum_start')),
-                {'a': node(
-                    buildin.mul,
-                    {'a': node('a'), 'b': node('b')}
-                )}
-            )
-        )
-    ],
-    'scalar_product'
 )

@@ -24,12 +24,3 @@ def node(function, sources=None):
     else:
         # assert isinstance(function, model.Function)
         return model.Node(function, dict(sources).items())
-
-
-def renode(function, reduction, sources):
-    return model.ReduceNode(
-        function,
-        reduction,
-        tuple(sources),
-        tuple(sources.values())
-    )
