@@ -34,24 +34,6 @@ MUL_IF_LESS = Function(
     'mul_if_less'
 )
 
-ADD_ONE_TO_ALL = Function(
-    {'test': True},
-    [
-        Method(
-            node('test'),
-            renode(Function( {'test' : True }, [Method(node('test'), node('append', {'list': node('reductor'), 'elem': node(INCR, 'number':node('number') )
-            node(buildin.commit, {
-                'context': node(INCR, {
-                    'number':  node(buildin.map_, {
-                        'list': node('numbers')
-                    })
-                })
-            })
-        )
-    ],
-    'add_one_to_all'
-)
-
 ADD_TO_ALL = statement(
     {'empty' : tuple() }
     renode(
@@ -70,23 +52,39 @@ ADD_TO_ALL = statement(
     'add_to_all'
 )
 
-SUM_VECTORS = Function(
-    {'test': True},
-    [
-        Method(
-            node('test'),
-            node(buildin.commit, {
-                'context': node(buildin.add, {
-                    'a':  node(buildin.map_, {
-                        'list': node('avector')
-                    }),
-                    'b':  node(buildin.map_, {
-                        'list': node('bvector')
-                    })
+SUM_VECTORS = statement(
+    {'empty' : tuple() }
+    renode(
+        statement(
+            node('append', {
+                'list': node('reductor'),
+                'elem': node(buildin.add, {
+                    'a': node('a'), 'b': node('b')
                 })
             })
-        )
-    ],
+        ),
+        {'reductor': node('empty')}, # Reductor
+        {'a': node('avector'), 'b': node('bvector')}, # Maps
+        {} #Variables
+    ),
+    'sum_vectors'
+)
+
+SCALAR_PRODUCT = statement(
+    {'empty' : tuple() }
+    renode(
+        statement(
+            node('append', {
+                'list': node('reductor'),
+                'elem': node(buildin.add, {
+                    'a': node('a'), 'b': node('b')
+                })
+            })
+        ),
+        {'reductor': node('empty')}, # Reductor
+        {'a': node('avector'), 'b': node('bvector')}, # Maps
+        {} #Variables
+    ),
     'sum_vectors'
 )
 
