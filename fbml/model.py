@@ -30,7 +30,7 @@ class BadBound(Exception):
         self.arguments = arguments
 
     def __str__(self):
-        return ("In Function {s.function} with {s.free_variables} free, " +
+        return ("In Function {s.function!r} with {s.free_variables} free, " +
                 "received arguments {s.arguments}").format(s=self)
 
 
@@ -75,7 +75,7 @@ class Function(namedtuple('Function', [
         return (set.union(*free_vars) -
                 set(name for name, value in self.bound_value_pairs))
 
-    def bind_variables(self, arguments, transform=lambda x: x):
+    def bind_variables(self, arguments, transform=lambda n, x: x):
         """
         Returns an dictionary with all the needed values bound,
         the tranform function, takes the input and transfroms it into
@@ -87,7 +87,8 @@ class Function(namedtuple('Function', [
 
         :param transform:
             A function that transform any (allowed) object to an internal
-            notion that can be used for further analysis. As default it
+            notion that can be used for further analysis. The function also
+            takes a name of the variable to help context anaysis, As default it
             does nothing, and allow all values.
 
         :raises BadBound:
@@ -104,7 +105,7 @@ class Function(namedtuple('Function', [
         if free_variables != set(arguments):
             raise BadBound(self, free_variables, arguments)
         return {
-            name: transform(value) for name, value in
+            name: transform(name, value) for name, value in
             chain(arguments.items(), self.bound_value_pairs)
         }
 

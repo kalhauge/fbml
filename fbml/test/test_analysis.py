@@ -39,6 +39,8 @@ def test_incr_type_set_clean():
     point_of_interest = function.methods[0].statement.function.methods
     assert_equal(point_of_interest, (buildin.i_add,))
 
+    assert_equal(function.free_variables(), {'number'})
+
 
 def test_multiply_finite_set_clean_gt():
     """

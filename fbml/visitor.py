@@ -25,7 +25,8 @@ class Visitor(object):
     def call(self, function, **arguments):
         return self.visit_function(
             function, {
-                name: self.transform(arg) for name, arg in arguments.items()
+                name: self.transform(name, arg)
+                for name, arg in arguments.items()
             })
 
     def visit_function(self, function, arguments):
@@ -109,7 +110,7 @@ class Visitor(object):
         """
         raise NotImplementedError()
 
-    def transform(self, value):
+    def transform(self, name, value):
         """
         Given an value return a new value of the internal type.
         """
@@ -196,11 +197,11 @@ class Cleaner(Visitor):
             [value.result for value in values]
         )
 
-    def transform(self, value):
+    def transform(self, name, value):
         if isinstance(value, self.Clean):
             return value
         else:
-            return self.Clean(value, self.evaluator.transform(value))
+            return self.Clean(name, self.evaluator.transform(name, value))
 
     def allow(self, test):
         L.debug('Cleaner.allow %s', test)

@@ -72,7 +72,7 @@ class FiniteSet (visitor.Evaluator):
         """ Returns a constant set """
         return frozenset({value})
 
-    def transform(self, value):
+    def transform(self, name, value):
         return value if isinstance(value, frozenset) else self.const(value)
 
     def merge(self, first, other):
@@ -177,7 +177,7 @@ class TypeSet (visitor.Evaluator):
         L.debug('allow %s -> %s', constraint, truth)
         return truth
 
-    def transform(self, value):
+    def transform(self, name, value):
         return value if isinstance(value, frozenset) else self.const(value)
 
     @classmethod

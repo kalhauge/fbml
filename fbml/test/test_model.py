@@ -59,7 +59,8 @@ class FunctionTester(TestCase):
         bound = function.bind_variables({'y': 10, 'z': 20})
         assert_equal(bound, {'x': 4, 'y': 10, 'z': 20})
 
-        bound = function.bind_variables({'y': 10, 'z': 20}, str)
+        bound = function.bind_variables(
+            {'y': 10, 'z': 20}, lambda n, x: str(x))
         assert_equal(bound, {'x': '4', 'y': '10', 'z': '20'})
 
     def test_bind_variables_bad_bound(self):
