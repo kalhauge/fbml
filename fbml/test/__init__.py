@@ -33,3 +33,20 @@ MUL_IF_LESS = Function(
     ],
     'mul_if_less'
 )
+
+ADD_ONE_TO_ALL = Function(
+    {'test': True},
+    [
+        Method(
+            node('test'),
+            node(buildin.commit, {
+                'context': node(INCR, {
+                    'number':  node(buildin.map_, {
+                        'list': node('numbers')
+                    })
+                })
+            })
+        )
+    ],
+    'add_one_to_all'
+)

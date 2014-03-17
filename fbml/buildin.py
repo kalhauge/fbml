@@ -10,6 +10,7 @@ L = logging.getLogger(__name__)
 
 from fbml.model import BuildInMethod, Function
 
+
 b_not = BuildInMethod(('a', ), 'b_not')
 b_and = BuildInMethod(('a', 'b'), 'b_and')
 
@@ -37,10 +38,14 @@ r_eq = BuildInMethod(('a', 'b'), 'r_eq')
 
 load = BuildInMethod(('a', ), 'load')
 
-i_map = BuildInMethod(('a', ), 'i_map')
-r_map = BuildInMethod(('a', ), 'r_map')
+#i_map = BuildInMethod(('a', ), 'i_map')
+#r_map = BuildInMethod(('a', ), 'r_map')
 
-map_ = Function({}, [i_map, r_map], 'map')
+m_map = BuildInMethod(('list', ), 'map')
+map_ = Function({}, [m_map], 'map')
+
+m_commit = BuildInMethod(('context',), 'commit')
+commit = Function({}, [m_commit], 'commit')
 
 load = Function({}, [load], 'load')
 not_ = Function({}, [b_not], 'not')

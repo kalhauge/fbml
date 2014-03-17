@@ -5,7 +5,7 @@
 """
 from nose.tools import assert_equal
 
-from fbml.test import MUL_IF_LESS, INCR
+from fbml.test import MUL_IF_LESS, INCR, ADD_ONE_TO_ALL
 from fbml.analysis import TypeSet, FiniteSet, Eval
 from fbml import buildin
 from fbml.visitor import Cleaner
@@ -20,6 +20,15 @@ def test_mul_if_less():
 def test_incr():
     assert_equal(Eval.run(INCR, number=2), 3)
     assert_equal(Eval.run(INCR, number=10), 11)
+
+
+def test_add_one_to_all():
+    assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=[]), [])
+    assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=[1]), [2])
+    assert_equal(
+        Eval.run(ADD_ONE_TO_ALL, numbers=[1, 2, 3, 4, 5, 8, 2]),
+        [2, 3, 4, 5, 6, 9, 3]
+    )
 
 
 def test_multiply_finite_set():
