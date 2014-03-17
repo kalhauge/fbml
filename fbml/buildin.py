@@ -10,10 +10,10 @@ L = logging.getLogger(__name__)
 
 from fbml.model import BuildInMethod, Function
 
-b_not = BuildInMethod(('a'), 'b_not')
+b_not = BuildInMethod(('a', ), 'b_not')
 b_and = BuildInMethod(('a', 'b'), 'b_and')
 
-i_neg = BuildInMethod(('a'), 'i_neg')
+i_neg = BuildInMethod(('a', ), 'i_neg')
 
 i_add = BuildInMethod(('a', 'b'), 'i_add')
 i_sub = BuildInMethod(('a', 'b'), 'i_sub')
@@ -24,7 +24,7 @@ i_le = BuildInMethod(('a', 'b'), 'i_le')
 i_gt = BuildInMethod(('a', 'b'), 'i_gt')
 i_eq = BuildInMethod(('a', 'b'), 'i_eq')
 
-r_neg = BuildInMethod(('a'), 'r_neg')
+r_neg = BuildInMethod(('a', ), 'r_neg')
 
 r_add = BuildInMethod(('a', 'b'), 'r_add')
 r_sub = BuildInMethod(('a', 'b'), 'r_sub')
@@ -35,7 +35,12 @@ r_le = BuildInMethod(('a', 'b'), 'r_le')
 r_gt = BuildInMethod(('a', 'b'), 'r_gt')
 r_eq = BuildInMethod(('a', 'b'), 'r_eq')
 
-load = BuildInMethod(('a'), 'load')
+load = BuildInMethod(('a', ), 'load')
+
+i_map = BuildInMethod(('a', ), 'i_map')
+r_map = BuildInMethod(('a', ), 'r_map')
+
+map_ = Function({}, [i_map, r_map], 'map')
 
 load = Function({}, [load], 'load')
 not_ = Function({}, [b_not], 'not')

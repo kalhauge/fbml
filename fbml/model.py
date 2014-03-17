@@ -14,24 +14,49 @@ The function is a holder of bound_values, ei. constants, and a set of methods.
 from itertools import chain
 from operator import itemgetter
 from collections import namedtuple, deque
-from functools import reduce
 
 import logging
 L = logging.getLogger(__name__)
 
-class BadBound(Exception):
-    """ Bad bound error """
 
-class Function(object):
+class BadBound(Exception):
+    """ Bad bound error, cast if there is an inconsistence between
+        free_variables and arguments.
+    """
+    def __init__(self, function, free_variables, arguments):
+        super(BadBound, self).__init__()
+        self.function = function
+        self.free_variables = free_variables
+        self.arguments = arguments
+
+    def __str__(self):
+        return ("In Function {s.function!r} with {s.free_variables} free, " +
+                "received arguments {s.arguments}").format(s=self)
+
+
+class Function(namedtuple('Function', [
+        'bound_value_pairs', 'methods', 'name'])):
     """
     The top object of the bunch.
     """
+    BoundValue = namedtuple('BoundValue', ['name', 'value'])
+    BoundValue.__repr__ = lambda self: \
+        'Function.BoundValue(name={0.name!r}, value={0.value!r})'.format(self)
 
-    def __init__(self, bound_values, methods, name=None):
-        assert name
-        self.bound_values = bound_values
-        self.methods = methods
-        self.name = name
+    def __new__(cls, bound_value_pairs, methods, name=None):
+        # Assumes dictionary to simplify interface
+        bound_values = dict(bound_value_pairs).items()
+        items = tuple(sorted(bound_values, key=itemgetter(0)))
+        s = super(Function, cls).__new__(cls, items, tuple(methods), name)
+        s._hash = hash(s)
+        return s
+
+    def hash(self):
+        return self._hash
+
+    @property
+    def bound_values(self):
+        return dict(self.bound_value_pairs)
 
     def free_variables(self):
         """
@@ -47,9 +72,10 @@ class Function(object):
         """
 
         free_vars = [method.variables() for method in self.methods]
-        return set.union(*free_vars) - set(self.bound_values)
+        return (set.union(*free_vars) -
+                set(name for name, value in self.bound_value_pairs))
 
-    def bind_variables(self, arguments, transform=lambda x:x):
+    def bind_variables(self, arguments, transform=lambda n, x: x):
         """
         Returns an dictionary with all the needed values bound,
         the tranform function, takes the input and transfroms it into
@@ -61,58 +87,32 @@ class Function(object):
 
         :param transform:
             A function that transform any (allowed) object to an internal
-            notion that can be used for further analysis. As default it
+            notion that can be used for further analysis. The function also
+            takes a name of the variable to help context anaysis, As default it
             does nothing, and allow all values.
 
         :raises BadBound:
             Exception if that arguments is not filling the entire free_variable
-            space, or if in overlapping with the allready bound variables
+            space, or if in overlapping with the allready bound variables.
+            For more infomation see :class:`BadBound`.
 
         :returns:
             A dictionary with all the bound values, a union of the already
             bound values of the function, and the presented arguments. All
             values presented in a format allowed by the transform
         """
-        if self.free_variables() != set(arguments):
-            raise BadBound(arguments)
+        free_variables = self.free_variables()
+        if free_variables != set(arguments):
+            raise BadBound(self, free_variables, arguments)
         return {
-            name: transform(value) for name, value in
-            chain(arguments.items(), self.bound_values.items())
+            name: transform(name, value) for name, value in
+            chain(arguments.items(), self.bound_value_pairs)
         }
 
-    def evaluate(self, analysis, arguments):
-        """
-        Evaluates the function, by runing the methods using the arguments,
-        the analysis is provided to describe how this is handled.
-        """
-        initial = self.bind_variables(arguments, analysis.transform)
-        return reduce(
-            analysis.merge,
-            (method.evaluate(analysis, initial) for method in self.methods),
-            analysis.EXTREMUM
-        )
-
-    def clean(self, analysis, arguments):
-        """
-        Cleans a function by returning a function, that do not contain
-        unrachable methods, if executed from the arguments.  The cleaning is
-        done recursively.
-        """
-        initial = self.bind_variables(arguments, analysis.transform)
-        cleaned_methods = [
-            method.clean(analysis, initial) for method in self.methods
-        ]
-        good_methods = [method for method in cleaned_methods if method]
-        L.debug('CLEAN: %s(%s) -> %s -> %s',
-            self.code,
-            ', '.join('%s=%s' % x for x in initial.items()),
-            cleaned_methods, good_methods)
-        return Function(self.bound_values, good_methods, self.name)
-
     def __str__(self):
-        return 'Function(\n    %s,\n    %s\n)' % (
-            self.bound_values,
-            str(self.methods).replace('\n', '\n    '))
+        return "{0.code}[{methods}]".format(
+            self, methods=', '.join(str(method) for method in self.methods)
+        )
 
     @property
     def code(self):
@@ -146,35 +146,19 @@ class Method(namedtuple('Method', ['guard', 'statement'])):
             ) if not isinstance(node, Node)
         )
 
-    def evaluate(self, analysis, initial):
-        assert self.variables().issubset(initial)
-        test_value = self.guard.evaluate(analysis, initial)
-        return self.statement.evaluate(analysis, initial)\
-            if analysis.allow(test_value) else analysis.EXTREMUM
-
-    def clean(self, analysis, initial):
-        test, guard = self.guard.clean(analysis, initial)
-        result, statement = self.statement.clean(analysis, initial)
-        return Method(guard, statement)\
-            if analysis.allow(test) and statement else None
-
-    def __repr__(self):
-        return "Method(\n    %s,\n    %s\n)" % (
-            str(self.guard).replace('\n', '\n    '),
-            str(self.statement).replace('\n', '\n    ')
-        )
+    def __str__(self):
+        return "{0.guard!s} -> {0.statement!s}".format(self)
 
 
 class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
     """
-    The build in methods is special methods that does not contain a
-    subflow. These entities is therefor build in and unchangeable.
+    The build in methods is special methods that does not contain a subflow.
+    These entities is therefor build in and unchangeable.
 
-    A build in method has two attributes a :attr:`argmap` and a
-    :attr:`code` attribute. The argmap is the argumentnames in the
-    oder in which that they should be called oppon the lower hardwar
-    leves. The code attribute is the buildin name, which can be used
-    when building backends.
+    A build in method has two attributes a :attr:`argmap` and a :attr:`code`
+    attribute. The argmap is the argumentnames in the oder in which that they
+    should be called oppon the lower hardwar leves. The code attribute is the
+    buildin name, which can be used when building backends.
     """
 
     is_buildin = True
@@ -188,26 +172,30 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
         """
         return set(self.argmap)
 
-    def evaluate(self, analysis, initial):
-        return analysis.apply(
-            self,
-            tuple(initial[argname] for argname in self.argmap)
-        )
-
-    def clean(self, analysis, initial):
-        result = analysis.apply(
-            self,
-            tuple(initial[argname] for argname in self.argmap))
-        return self if result else None
-
-    def __repr__(self):
+    def __str__(self):
         return self.code
 
 
-class Node (namedtuple('Node', ['function', 'sources', 'names'])):
+class Node (namedtuple('Node', ['function', 'named_sources'])):
     """
     Node, if the function is load, then the sources are allowed to be a string
     """
+
+    Source = namedtuple('Source', ['name', 'node'])
+    Source.__repr__ = lambda self: \
+        'Node.Source(name={0.name!r}, node={0.node!r})'.format(self)
+
+    def __new__(cls, function, named_sources):
+        """
+        New sorts the sources and puts them in the Source folder for later ease
+        of test of equality
+        """
+        named_sources = (cls.Source(name, node)
+                         for name, node in named_sources)
+        sorted_sources = tuple(
+            sorted(named_sources, key=lambda source: source.name)
+        )
+        return super(Node, cls).__new__(cls, function, sorted_sources)
 
     def dependencies(self):
         """
@@ -218,6 +206,14 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         return {
             source for source in sources if not isinstance(source, Node)
         }
+
+    @property
+    def names(self):
+        return (source.name for source in self.named_sources)
+
+    @property
+    def sources(self):
+        return (source.node for source in self.named_sources)
 
     def precedes(self):
         """
@@ -256,70 +252,14 @@ class Node (namedtuple('Node', ['function', 'sources', 'names'])):
         """
         return dict(zip(self.names, values))
 
-    def visit(self, visitor, initial):
-        """
-        A visitor for nodes.
-
-        :param visitor:
-            Is the function that for each node returns anything.  The visitor
-            must accept a node, and a dictionary maping the old nodes to new
-            values::
-
-                visitor :=  Node x ?**k -> ?
-
-        :returns:
-            Whatever the visitor returns
-        """
-        return self.visit_all(visitor, initial)[self]
-
-    def visit_all(self, visitor, initial):
-        """ Returns the internal mapping for the visitor """
-        mapping = dict(initial)
-        for visit_node in reversed(self.precedes()):
-            try:
-                sources = tuple(mapping[s] for s in visit_node.sources)
-                mapping[visit_node] = visitor(visit_node, sources)
-            except KeyError:
-                L.error("KeyError: %s, %s", visit_node, mapping)
-                raise
-        return mapping
-
-
-    def evaluate(self, analysis, initial):
-        return self.visit(
-            lambda node, sources: node.function.evaluate(
-                analysis, node.project(sources)
-            ),
-            initial
-        )
-
-    def clean(self, analysis, initial):
-        mapping = {
-            name: (val, name) for name, val in initial.items()
-        }
-
-        def cleanup(node, sources):
-            results, nodes = zip(*sources)
-            values = node.project(results)
-            new_function = node.function.clean(analysis, values)
-            result = node.function.evaluate(analysis, values)
-            return (result, Node(new_function, nodes, node.names))
-
-        return self.visit(cleanup, mapping)
-
-
     def __str__(self):
-        return 'Node %s:\n    %s,\n    %s\n)' % (
-            self.function.code + str(self.function.methods),
-            ('(\n    ' + ',\n    '.join(
-                repr(source) for source in self.sources
-            ) + '\n)').replace('\n', '\n    '),
-            self.names)
-
-    def __repr__(self):
-        return 'Node %s: %r' % (self[0].code, self.sources)
+        if self.function.code == 'load':
+            return str(self.named_sources[0].node)
+        return "({0.function.code} {args})".format(
+            self, args=" ".join("%s=%s" % s for s in self.named_sources)
+        )
 
     @property
     def code(self):
         """ returns the code of the node """
-        return hex(id(self))
+        return 'n_' + hex(id(self))
