@@ -6,16 +6,14 @@ The tests
 
 from fbml.model import Method, Function
 from fbml import buildin
-from fbml import node, statement
+from fbml import node, statement, renode
 
-INCR = Function(
-    {'test': True, 'value': 1},
-    [
-        Method(
-            node('test'),
-            node(buildin.add, {'a': node('number'), 'b': node('value')})
-        )
-    ],
+INCR = statement(
+    {'value': 1},
+    node(buildin.add, {
+        'a': node('number'),
+        'b': node('value')
+    }),
     'incr'
 )
 
@@ -35,35 +33,36 @@ MUL_IF_LESS = Function(
 )
 
 ADD_TO_ALL = statement(
-    {'empty' : tuple() }
+    {'empty' : tuple()},
     renode(
         statement(
-            node('append', {
+            node(buildin.append, {
                 'list': node('reductor'),
-                'elem': node(INCR, {
-                    'number': node('number')
+                'elem': node(buildin.add, {
+                    'a': node('number'),
+                    'b': node('incr')
                 })
             })
         ),
-        {'reductor': node('empty')}, # Reductor
+        ('reductor', node('empty')), # Reductor
         {'number': node('numbers')}, # Maps
-        {'increment': node('increment')} #Variables
+        {'incr': node('incr')} #Variables
     ),
     'add_to_all'
 )
 
 SUM_VECTORS = statement(
-    {'empty' : tuple() }
+    {'empty' : tuple()},
     renode(
         statement(
-            node('append', {
+            node(buildin.append, {
                 'list': node('reductor'),
                 'elem': node(buildin.add, {
                     'a': node('a'), 'b': node('b')
                 })
             })
         ),
-        {'reductor': node('empty')}, # Reductor
+        ('reductor', node('empty')), # Reductor
         {'a': node('avector'), 'b': node('bvector')}, # Maps
         {} #Variables
     ),
@@ -71,39 +70,17 @@ SUM_VECTORS = statement(
 )
 
 SCALAR_PRODUCT = statement(
-    {'empty' : tuple() }
+    {'initial' : 1},
     renode(
         statement(
-            node('append', {
-                'list': node('reductor'),
-                'elem': node(buildin.add, {
-                    'a': node('a'), 'b': node('b')
-                })
+            node(buildin.mul, {
+                'a': node('reductor'),
+                'b': node('number')
             })
         ),
-        {'reductor': node('empty')}, # Reductor
-        {'a': node('avector'), 'b': node('bvector')}, # Maps
+        ('reductor', node('initial')), # Reductor
+        {'number': node('vector')}, # Maps
         {} #Variables
     ),
     'sum_vectors'
-)
-
-SCALAR_PRODUCT = Function(
-    {'test': True, 'one': 1},
-    [
-        Method(
-            node('test'),
-            node(buildin.commit, {
-                'context': node(buildin.mul, {
-                    'a':  node(buildin.map_, {
-                        'list': node('avector')
-                    }),
-                    'b':  node(buildin.reduce, {
-                        'initial': node('one')
-                    })
-                })
-            })
-        )
-    ],
-    'scalar_product'
 )

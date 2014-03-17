@@ -6,6 +6,7 @@ bringing with it an value of any sort.
 
 """
 from collections import namedtuple
+from itertools import chain
 from functools import reduce
 
 import logging
@@ -87,7 +88,10 @@ class Visitor(object):
         mapping = dict(initial)
         for visit_node in reversed(node.precedes()):
             sources = tuple(mapping[s] for s in visit_node.sources)
-            mapping[visit_node] = self.visit_node(visit_node, sources)
+            if isinstance(visit_node, model.ReductionNode):
+                mapping[visit_node] = self.visit_reduction_node(visit_node, sources)
+            else:
+                 mapping[visit_node] = self.visit_node(visit_node, sources)
         return mapping[node]
 
     def visit_node(self, node, sources):
@@ -101,6 +105,25 @@ class Visitor(object):
         function = self.visit_function(node.function, node.project(sources))
         result = self.exit_node(node, sources, function)
         L.debug("<visit_node           %s %s", node, result)
+        return result
+
+    def visit_reduction_node(self, node, sources):
+        """ visits a node
+
+        :param node: The head node
+
+        :param sources: The sources in order
+        """
+        L.debug(">visit_reduction_node %s %s", node, sources)
+        reductor, maps, rest = node.reduction_project(sources)
+        key, value = reductor
+        keys, lists = zip(*maps)
+        for elms in zip(*lists):
+            elms = list(zip(keys, elms))
+            i_sources = dict(chain([(key, value)], elms, rest))
+            value = self.visit_function(node.function, i_sources)
+        result = self.exit_reduction_node(node, sources, value)
+        L.debug("<visit_reduction_node %s %s", node, result)
         return result
 
     def allow(self, test):
@@ -128,6 +151,8 @@ class Visitor(object):
     def exit_node(self, node, sources, function):
         raise NotImplementedError()
 
+    def exit_reduction_node(self, node, sources, function):
+        raise NotImplementedError()
 
 class Evaluator(Visitor):
 
@@ -167,6 +192,10 @@ class Evaluator(Visitor):
 
     def exit_node(self, node, sources, function):
         return function
+
+    def exit_reduction_node(self, node, sources, function):
+        return function
+
 
 
 class Cleaner(Visitor):

@@ -175,6 +175,10 @@ class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
     def __str__(self):
         return self.code
 
+def store(named_nodes, container):
+    ns = (container(name, node) for name, node in named_nodes)
+    return tuple(sorted(ns, key=lambda source: source.name))
+
 
 class Node (namedtuple('Node', ['function', 'named_sources'])):
     """
@@ -190,11 +194,7 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
         New sorts the sources and puts them in the Source folder for later ease
         of test of equality
         """
-        named_sources = (cls.Source(name, node)
-                         for name, node in named_sources)
-        sorted_sources = tuple(
-            sorted(named_sources, key=lambda source: source.name)
-        )
+        sorted_sources = store(named_sources, cls.Source)
         return super(Node, cls).__new__(cls, function, sorted_sources)
 
     def dependencies(self):
@@ -263,3 +263,52 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
     def code(self):
         """ returns the code of the node """
         return 'n_' + hex(id(self))
+
+class ReductionNode(namedtuple('ReductionNode', ['function', 'reductor', 'maps', 'named_sources'])):
+
+    Source = namedtuple('Source', ['name', 'node'])
+    Source.__repr__ = lambda self: \
+        'ReductionNode.Source(name={0.name!r}, node={0.node!r})'.format(self)
+
+    def __new__(cls, function, reductor, maps, named_sources):
+        """
+        New sorts the sources and puts them in the Source folder for later ease
+        of test of equality
+        """
+        return super(ReductionNode, cls).__new__(
+            cls, function,
+            cls.Source(*reductor),
+            store(maps, cls.Source),
+            store(named_sources, cls.Source)
+        )
+    @property
+    def names(self):
+        return (source.name for source in chain([self.reductor], self.maps, self.named_sources))
+
+    @property
+    def sources(self):
+        return (source.node for source in chain([self.reductor], self.maps, self.named_sources))
+
+    dependencies = Node.dependencies
+    precedes = Node.precedes
+    project = Node.project
+
+    def reduction_project(self, sources):
+        """ Like the normal projection, but seperates the result into the tuples """
+        psources = tuple(zip(self.names, sources))
+        reductor = psources[0]
+        maps = psources[1:len(self.maps)+1]
+        return reductor, maps, psources[len(self.maps)+1:]
+
+    def __str__(self):
+        return "{reduct}[{maps}({0.function.code}{args})]".format(
+            self,
+            reduct="%s=%s" % self.reductor,
+            maps=" ".join("%s=%s" % s for s in self.maps) + " ",
+            args=" " + " ".join("%s=%s" % s for s in self.named_sources) if self.named_sources else ""
+        )
+
+    @property
+    def code(self):
+        """ returns the code of the reductionode """
+        return 'rn_' + hex(id(self))

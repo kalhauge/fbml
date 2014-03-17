@@ -38,17 +38,8 @@ r_eq = BuildInMethod(('a', 'b'), 'r_eq')
 
 load = BuildInMethod(('a', ), 'load')
 
-#i_map = BuildInMethod(('a', ), 'i_map')
-#r_map = BuildInMethod(('a', ), 'r_map')
-
-m_map = BuildInMethod(('list', ), 'map')
-map_ = Function({}, [m_map], 'map')
-
-m_commit = BuildInMethod(('context',), 'commit')
-commit = Function({}, [m_commit], 'commit')
-
-m_reduce= BuildInMethod(('initial',), 'reduce')
-reduce = Function({}, [m_context], 'reduce')
+m_append = BuildInMethod(('list', 'elem'), 'append')
+append = Function({}, [m_append], 'append')
 
 load = Function({}, [load], 'load')
 not_ = Function({}, [b_not], 'not')

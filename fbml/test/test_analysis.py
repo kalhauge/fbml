@@ -5,7 +5,7 @@
 """
 from nose.tools import assert_equal
 
-from fbml.test import MUL_IF_LESS, INCR, ADD_ONE_TO_ALL, SUM_VECTORS, SCALAR_PRODUCT
+from fbml.test import MUL_IF_LESS, INCR, ADD_TO_ALL, SUM_VECTORS, SCALAR_PRODUCT
 from fbml.analysis import TypeSet, FiniteSet, Eval
 from fbml import buildin
 from fbml.visitor import Cleaner
@@ -23,15 +23,15 @@ class EvalTester(TestCase):
         assert_equal(Eval.run(INCR, number=2), 3)
         assert_equal(Eval.run(INCR, number=10), 11)
 
-    def test_add_one_to_all_zero(self):
-        assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=tuple()), tuple())
+    def test_add_to_all_zero(self):
+        assert_equal(Eval.run(ADD_TO_ALL, incr=1, numbers=tuple()), tuple())
 
-    def test_add_one_to_all_one(self):
-        assert_equal(Eval.run(ADD_ONE_TO_ALL, numbers=(1,)), (2, ))
+    def test_add_to_all_one(self):
+        assert_equal(Eval.run(ADD_TO_ALL, incr=3, numbers=(1,)), (4, ))
 
-    def test_add_one_to_all_many(self):
+    def test_add_to_all_many(self):
         assert_equal(
-            Eval.run(ADD_ONE_TO_ALL, numbers=(1, 2, 3, 4, 5, 8, 2)),
+            Eval.run(ADD_TO_ALL, incr=1, numbers=(1, 2, 3, 4, 5, 8, 2)),
             (2, 3, 4, 5, 6, 9, 3)
         )
 
@@ -48,10 +48,13 @@ class EvalTester(TestCase):
         assert_equal(Eval.run(SUM_VECTORS, avector=(1.0, 2.0, 3.0), bvector=(5.0, 0.0, -1.0)), (6.0, 2.0, 2.0))
 
     def test_scalar_product_one(self):
-        assert_equal(Eval.run(SCALAR_PRODUCT, vector=(1,)), 1)
+        assert_equal(Eval.run(SCALAR_PRODUCT, vector=tuple()), 1)
+
+    def test_scalar_product_one(self):
+        assert_equal(Eval.run(SCALAR_PRODUCT, vector=(4,)), 4)
 
     def test_scalar_product_many(self):
-        assert_equal(Eval.run(SCALAR_PRODUCT, vector=(1,2,3,4)), 12)
+        assert_equal(Eval.run(SCALAR_PRODUCT, vector=(1,2,3,4)), 24)
 
 def test_multiply_finite_set():
     """

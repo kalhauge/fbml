@@ -25,18 +25,20 @@ def node(function, sources=None):
         # assert isinstance(function, model.Function)
         return model.Node(function, dict(sources).items())
 
+
 def statement(*args):
     """ Returns a simple function with a single node, that always is run"""
     real_consts = {'test' : True }
     if len(args) == 1:
         s_node = args[0]
-        name = none
-    else if len(args) == 2:
+        name = None
+    elif len(args) == 2:
         s_node, name = args
     else:
         consts, s_node, name = args
         real_consts.update(consts)
 
-    return Function(real_consts, [Method(node('test'), s_node)], name)
+    return model.Function(real_consts, [model.Method(node('test'), s_node)], name)
 
-
+def renode(function, reductor, maps, sources):
+    return model.ReductionNode(function, reductor, dict(maps).items(), dict(sources).items())

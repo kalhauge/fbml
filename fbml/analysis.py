@@ -41,6 +41,7 @@ METHOD_MAPPING = {
     'r_eq':   opr.eq,
     'b_not':  opr.not_,
     'b_and':  opr.and_,
+    'append': lambda l, a: l + (a,),
 
     'boolean': lambda x: isinstance(x, bool),
     'integer': lambda x: x.__class__ == int,
@@ -81,30 +82,8 @@ class Eval(visitor.Evaluator):
             pass
 
     def apply(self, method, args):
-        if method.code == 'reduce':
-            return Context((method.code, Reductor(args[0])), node(method.code))
-        else if method.code == 'map':
-            return Context((method.code, Map(len(args[0]), args[0])), node(method.code))
-        else if method.code == 'commit':
-            context = args[0]
-            context.trace
-                next_value = arg.initial
-                while not self.failed(next_value):
-                    value = next_value
-                    next_value = self.call(arg.backtrack, bt=value)
-                return value
-            else:
-                raise Exception()
-        else:
-            pymethod = METHOD_MAPPING[method.code]
-            mappers = [a for a in args if isinstance(a, Map)]
-            if mappers:
-                mapped_args = self.argument_mapper(args)
-                return Map(
-                    mappers[0].size,
-                    (pymethod(*m_args) for m_args in mapped_args)
-                    )
-            return pymethod(*args)
+        pymethod = METHOD_MAPPING[method.code]
+        return pymethod(*args)
 
 #
 # Analysis
