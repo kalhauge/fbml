@@ -359,7 +359,7 @@ def initial_values(names, constants, llvm_function):
 
 
 def depends(function, types):
-    initial = function.bind_variables(TypeSet.transform, types)
+    initial = function.bind_variables(types, TypeSet().transform)
     used_functions = set()
 
     def collector(node, sources):
@@ -388,7 +388,7 @@ class LLVMBackend(object):
         Creates a LLVM function from all of these methods. Assumes that the
         methods have the same argument names.
         """
-        return_type = function.evaluate(TypeSet, type_map)
+        return_type = TypeSet().visit_function(function, type_map)
 
         if not return_type:
             raise Exception(
