@@ -37,7 +37,7 @@ def test_incr_type_set_clean():
     function = Cleaner(TypeSet()).call(INCR, number=10)
 
     point_of_interest = function.methods[0].statement.function.methods
-    assert_equal(point_of_interest, [buildin.i_add])
+    assert_equal(point_of_interest, (buildin.i_add,))
 
 
 def test_multiply_finite_set_clean_gt():

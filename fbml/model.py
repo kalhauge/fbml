@@ -139,7 +139,9 @@ class Function(namedtuple('Function', [
         return Function(self.bound_values, good_methods, self.name)
 
     def __str__(self):
-        return self.code
+        return "{0.code}[{methods}]".format(
+            self, methods=', '.join(str(method) for method in self.methods)
+        )
 
     @property
     def code(self):
@@ -359,7 +361,7 @@ class Node (namedtuple('Node', ['function', 'named_sources'])):
 
     def __str__(self):
         if self.function.code == 'load':
-            return self.named_sources[0].node
+            return str(self.named_sources[0].node)
         return "({0.function.code} {args})".format(
             self, args=" ".join("%s=%s" % s for s in self.named_sources)
         )

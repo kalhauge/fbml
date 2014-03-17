@@ -37,11 +37,11 @@ class Visitor(object):
             with. A dictionary containing the mapping from the values of the
             arguments to the function.
         """
-        L.debug("visit_function %s %s", function, arguments)
+        L.debug(">visit_function       %s %s", function, arguments)
         try:
             initial = function.bind_variables(arguments, self.transform)
-        except model.BadBound:
-            # For now do nothing
+        except model.BadBound as e:
+            L.error("<visit_function       %s %s", function, e)
             raise
         else:
             results = [
@@ -49,14 +49,19 @@ class Visitor(object):
                 else self.visit_method(method, initial)
                 for method in function.methods
             ]
-            return self.exit_function(function, results)
+
+            result = self.exit_function(function, results)
+            L.debug("<visit_function       %s %s", function, result)
+            return result
 
     def visit_buildin_method(self, method, initial):
-        L.debug("visit_buildin_method %s %s", method, initial)
-        return self.exit_buildin_method(
+        L.debug(">visit_buildin_method %s %s", method, initial)
+        result = self.exit_buildin_method(
             method,
             tuple(initial[argname] for argname in method.argmap)
         )
+        L.debug("<visit_buildin_method %s %s", method, result)
+        return result
 
     def visit_method(self, method, initial):
         """ visits a method
@@ -66,17 +71,19 @@ class Visitor(object):
         :param initial: The inital free variables, these variables should
             be a superset of the real need values
         """
-        L.debug("visit_method %s %s", method, initial)
+        L.debug(">visit_method         %s %s", method, initial)
         test_value = self.visit_nodes(method.guard, initial)
         if self.allow(test_value):
             nodes = self.visit_nodes(method.statement, initial)
-            return self.exit_method(method, test_value, nodes)
+            result = self.exit_method(method, test_value, nodes)
         else:
-            return self.extremum
+            result = self.extremum
+        L.debug("<visit_method         %s %s", method, result)
+        return result
 
     def visit_nodes(self, node, initial):
         """ visits a node tree """
-        L.debug("visit_nodes %s %s", node, initial)
+        #L.debug("visit_nodes %s %s", node, initial)
         mapping = dict(initial)
         for visit_node in reversed(node.precedes()):
             sources = tuple(mapping[s] for s in visit_node.sources)
@@ -90,9 +97,11 @@ class Visitor(object):
 
         :param sources: The sources in order
         """
-        L.debug("visit_node %s %s", node, sources)
+        L.debug(">visit_node           %s %s", node, sources)
         function = self.visit_function(node.function, node.project(sources))
-        return self.exit_node(node, sources, function)
+        result = self.exit_node(node, sources, function)
+        L.debug("<visit_node           %s %s", node, result)
+        return result
 
     def allow(self, test):
         """
@@ -171,6 +180,8 @@ class Cleaner(Visitor):
     """
 
     Clean = namedtuple('Clean', ('model', 'result'))
+    Clean.__str__ = lambda self: \
+        "Clean(model={0.model}, result={0.result})".format(self)
 
     def __init__(self, evaluator):
         self.evaluator = evaluator
@@ -192,13 +203,16 @@ class Cleaner(Visitor):
             return self.Clean(value, self.evaluator.transform(value))
 
     def allow(self, test):
-        return self.evaluator.allow(test.result) and not test.model
+        L.debug('Cleaner.allow %s', test)
+        result = self.evaluator.allow(test.result) and test.model
+        L.debug('Cleaner.allow %s', (result, ))
+        return result
 
     def exit_function(self, function, results):
         models, results_ = self.unzip(results)
         methods = [
             method for method, result in results
-            if self.evaluator.failed(result)
+            if not self.evaluator.failed(result)
         ]
         return self.Clean(
             model.Function(function.bound_values, methods, function.name),
@@ -211,6 +225,7 @@ class Cleaner(Visitor):
         return self.Clean(method, result)
 
     def exit_method(self, method, guard, statement):
+        L.debug('exit_method %s %s %s', method, guard, statement)
         return self.Clean(
             model.Method(guard.model, statement.model),
             self.evaluator.exit_method(method, guard.result, statement.result)
