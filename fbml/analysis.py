@@ -12,6 +12,72 @@ L = logging.getLogger(__name__)
 from fbml import visitor
 
 
+def reflex(x):
+    return x
+
+METHOD_MAPPING = {
+    'load':   reflex,
+    'i_neg':  opr.neg,
+    'i_add':  opr.add,
+    'i_sub':  opr.sub,
+    'i_mul':  opr.mul,
+    'i_ge':   opr.ge,
+    'i_lt':   opr.lt,
+    'i_le':   opr.le,
+    'i_gt':   opr.gt,
+    'i_eq':   opr.eq,
+    'r_neg':  opr.neg,
+    'r_add':  opr.add,
+    'r_sub':  opr.sub,
+    'r_mul':  opr.mul,
+    'r_ge':   opr.ge,
+    'r_lt':   opr.lt,
+    'r_le':   opr.le,
+    'r_gt':   opr.gt,
+    'r_eq':   opr.eq,
+    'b_not':  opr.not_,
+    'b_and':  opr.and_,
+
+    'boolean': lambda x: isinstance(x, bool),
+    'integer': lambda x: x.__class__ == int,
+    'real': lambda x: isinstance(x, float),
+}
+
+
+class Eval(visitor.Evaluator):
+    """
+    This is the defacto evaluator, everything that this does is right,
+    everything else must follow its example. This eval function can therefor be
+    used to see if analysis is infact over or under approximations, and if
+    other implmenations is correct.
+    """
+
+    extremum = None
+
+    def transform(self, name, value):
+        """ Read the values as is """
+        return value
+
+    def merge_all(self, results):
+        """ Short surcuit on the results, takes first real result"""
+        for result in results:
+            if not self.failed(result):
+                break
+        else:
+            result = self.extremum
+        return result
+
+    def allow(self, test):
+        return test is True
+
+    def apply(self, method, args):
+        return METHOD_MAPPING[method.code](*args)
+
+#
+# Analysis
+#
+
+
 def all_is(superset, returnset, elseset):
     """
     Tests if all arguments is a subset of the superset, if it is returnset
@@ -30,40 +96,7 @@ def if_subset(typeset, thenset, elseset):
     return lambda other: thenset if other[0] >= typeset else elseset
 
 
-def reflex(x):
-    return x
-
-
 class FiniteSet (visitor.Evaluator):
-
-    METHOD_MAPPING = {
-        'load': reflex,
-        'i_map': reflex,
-        'i_neg':  opr.neg,
-        'i_add':  opr.add,
-        'i_sub':  opr.sub,
-        'i_mul':  opr.mul,
-        'i_ge':   opr.ge,
-        'i_lt':   opr.lt,
-        'i_le':   opr.le,
-        'i_gt':   opr.gt,
-        'i_eq':   opr.eq,
-        'r_neg':  opr.neg,
-        'r_add':  opr.add,
-        'r_sub':  opr.sub,
-        'r_mul':  opr.mul,
-        'r_ge':   opr.ge,
-        'r_lt':   opr.lt,
-        'r_le':   opr.le,
-        'r_gt':   opr.gt,
-        'r_eq':   opr.eq,
-        'b_not':  opr.not_,
-        'b_and':  opr.and_,
-
-        'boolean': lambda x: isinstance(x, bool),
-        'integer': lambda x: x.__class__ == int,
-        'real': lambda x: isinstance(x, float),
-    }
 
     extremum = frozenset({})
 
@@ -87,7 +120,7 @@ class FiniteSet (visitor.Evaluator):
 
     def apply(self, method, args_sets):
         """ Applies the arg_set of the method """
-        pymethod = self.METHOD_MAPPING[method.code]
+        pymethod = METHOD_MAPPING[method.code]
 
         def call(args):
             """ Calls the py method """

@@ -6,9 +6,20 @@
 from nose.tools import assert_equal
 
 from fbml.test import MUL_IF_LESS, INCR
-from fbml.analysis import TypeSet, FiniteSet
+from fbml.analysis import TypeSet, FiniteSet, Eval
 from fbml import buildin
 from fbml.visitor import Cleaner
+
+
+def test_mul_if_less():
+    assert_equal(Eval.run(MUL_IF_LESS, number=2), 20)
+    assert_equal(Eval.run(MUL_IF_LESS, number=2.0), 20.0)
+    assert_equal(Eval.run(MUL_IF_LESS, number=10), 10)
+
+
+def test_incr():
+    assert_equal(Eval.run(INCR, number=2), 3)
+    assert_equal(Eval.run(INCR, number=10), 11)
 
 
 def test_multiply_finite_set():

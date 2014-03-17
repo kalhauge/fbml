@@ -45,12 +45,11 @@ class Visitor(object):
             L.error("<visit_function       %s %s", function, e)
             raise
         else:
-            results = [
+            results = (
                 self.visit_buildin_method(method, initial) if method.is_buildin
                 else self.visit_method(method, initial)
                 for method in function.methods
-            ]
-
+            )
             result = self.exit_function(function, results)
             L.debug("<visit_function       %s %s", function, result)
             return result
@@ -117,6 +116,7 @@ class Visitor(object):
         raise NotImplementedError()
 
     def exit_function(self, function, results):
+        """ Note: results is a iterator """
         raise NotImplementedError()
 
     def exit_buildin_method(self, method, args):
@@ -210,6 +210,7 @@ class Cleaner(Visitor):
         return result
 
     def exit_function(self, function, results):
+        results = list(results)
         models, results_ = self.unzip(results)
         methods = [
             method for method, result in results
