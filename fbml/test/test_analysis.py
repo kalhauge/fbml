@@ -56,13 +56,13 @@ class EvalTester(TestCase):
     def test_scalar_product_many(self):
         assert_equal(Eval.run(SCALAR_PRODUCT, vector=(1,2,3,4)), 24)
 
+
 def test_multiply_finite_set():
     """
     this example test a simple mulitply, tested with FiniteSet
     """
     value = FiniteSet.run(MUL_IF_LESS, number=2)
     assert_equal(value, FiniteSet.const(20))
-
 
 def test_multiply_type_set():
     """
@@ -76,6 +76,9 @@ def test_multiply_type_set():
     value = TypeSet.run(MUL_IF_LESS, number=2.0)
     assert_equal(value, TypeSet.extremum)
 
+def test_scalar_product_type_set():
+    value = TypeSet.run(SCALAR_PRODUCT, vector=TypeSet.INTEGER_LIST)
+    assert_equal(value, TypeSet.INTEGER)
 
 def test_incr_type_set_clean():
     """ This example tests the cleaning of INCR"""

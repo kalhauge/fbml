@@ -19,71 +19,6 @@ Reductor = namedtuple('Reductor', ['initial'])
 Map = namedtuple('Map', ['size', 'list'])
 Context = namedtuple('Context', ['args', 'trace'])
 
-METHOD_MAPPING = {
-    'load':   reflex,
-    'i_neg':  opr.neg,
-    'i_add':  opr.add,
-    'i_sub':  opr.sub,
-    'i_mul':  opr.mul,
-    'i_ge':   opr.ge,
-    'i_lt':   opr.lt,
-    'i_le':   opr.le,
-    'i_gt':   opr.gt,
-    'i_eq':   opr.eq,
-    'r_neg':  opr.neg,
-    'r_add':  opr.add,
-    'r_sub':  opr.sub,
-    'r_mul':  opr.mul,
-    'r_ge':   opr.ge,
-    'r_lt':   opr.lt,
-    'r_le':   opr.le,
-    'r_gt':   opr.gt,
-    'r_eq':   opr.eq,
-    'b_not':  opr.not_,
-    'b_and':  opr.and_,
-    'append': lambda l, a: l + (a,),
-
-    'boolean': lambda x: isinstance(x, bool),
-    'integer': lambda x: x.__class__ == int,
-    'real': lambda x: isinstance(x, float),
-}
-
-class Eval(visitor.Evaluator):
-    """
-    This is the defacto evaluator, everything that this does is right,
-    everything else must follow its example. This eval function can therefor be
-    used to see if analysis is infact over or under approximations, and if
-    other implmenations is correct.
-    """
-
-    extremum = None
-
-    def transform(self, name, value):
-        """ Read the values as is """
-        return value
-
-    def merge_all(self, results):
-        """ Short surcuit on the results, takes first real result"""
-        for result in results:
-            if not self.failed(result):
-                break
-        else:
-            result = self.extremum
-        return result
-
-    def allow(self, test):
-        return test is True
-
-    def argument_mapper(self, args):
-        try:
-            while True:
-                yield [next(a.itr) if isinstance(a, Map) else a for a in args]
-        except StopIteration:
-            pass
-
-    def apply(self, method, args):
-        pymethod = METHOD_MAPPING[method.code]
-        return pymethod(*args)
 
 #
 # Analysis
@@ -107,43 +42,6 @@ def if_subset(typeset, thenset, elseset):
     """
     return lambda other: thenset if other[0] >= typeset else elseset
 
-
-class FiniteSet (visitor.Evaluator):
-
-    extremum = frozenset({})
-
-    @classmethod
-    def const(cls, value):
-        """ Returns a constant set """
-        return frozenset({value})
-
-    def transform(self, name, value):
-        return value if isinstance(value, frozenset) else self.const(value)
-
-    def merge(self, first, other):
-        """ Merges two finitesets """
-        return frozenset(first | other)
-
-    def allow(self, constraint):
-        """ Check if a constraint is uphold """
-        truth = frozenset({True}) == constraint
-        L.debug('allow %s -> %s', constraint, truth)
-        return truth
-
-    def apply(self, method, args_sets):
-        """ Applies the arg_set of the method """
-        pymethod = METHOD_MAPPING[method.code]
-
-        def call(args):
-            """ Calls the py method """
-            retval = pymethod(*args)
-            return retval
-
-        retval = frozenset(
-            call(args) for args in itertools.product(*args_sets)
-        )
-        L.debug("%r%s -> %s", method, args_sets, retval)
-        return retval
 
 
 BasicType = namedtuple('BasicType', ['name'])
@@ -207,6 +105,9 @@ class TypeSet (visitor.Evaluator):
         'integer':  if_subset(INTEGER, BOOLEAN, extremum),
         'real':     if_subset(REAL, BOOLEAN, extremum)
     }
+
+    def call(self, function, **arguments):
+        return self.visit_function(function, arguments)
 
     def merge(self, first, other):
         """
