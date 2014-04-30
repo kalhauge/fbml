@@ -1,133 +1,314 @@
 """
+
 .. currentmodule:: fbml.model
 .. moduleauthor:: Christian Gram Kalhauge <christian@kalhauge.dk>
+.. verion:: 1.0
+
+:class:`Function`
+=================
+
+The function is a holder of bound_values, ei. constants, and a set of methods.
+
 
 """
+from itertools import chain
 from operator import itemgetter
 from collections import namedtuple, deque
 
 import logging
 L = logging.getLogger(__name__)
 
-from fbml.value import INTEGERS, union
 
-class Method (object):
+class BadBound(Exception):
+    """ Bad bound error, cast if there is an inconsistence between
+        free_variables and arguments.
     """
-     Method
-     """
-
-    def __init__(self, name, arguments, constants, contraint, target):
-        self.name = name
+    def __init__(self, function, free_variables, arguments):
+        super(BadBound, self).__init__()
+        self.function = function
+        self.free_variables = free_variables
         self.arguments = arguments
-        self.constants = constants
-        self.contraint = contraint
-        self.target = target
 
-    def predict_return(self, compare=union):
-        """
-        predicts the return value
-        """
-        return INTEGERS
-
-    def allowed_arguments(self, compare=union):
-        """
-        Aproximating the allowed values
-        """
-        return { a : INTEGERS for a in self.arguments }
-
-    def is_buildin(self):
-        """
-        checks if the method is buildin
-        """
-        return isinstance(self.target, str)
-
-    def __repr__(self):
-        return self.name + '-' + hex(id(self))
+    def __str__(self):
+        return ("In Function {s.function!r} with {s.free_variables} free, " +
+                "received arguments {s.arguments}").format(s=self)
 
 
-class Node (namedtuple('Node', ['name', 'sources', 'methods'])):
+class Function(namedtuple('Function', [
+        'bound_value_pairs', 'methods', 'name'])):
     """
-    Node
+    The top object of the bunch.
     """
-    def calulate_reach(self):
+    BoundValue = namedtuple('BoundValue', ['name', 'value'])
+    BoundValue.__repr__ = lambda self: \
+        'Function.BoundValue(name={0.name!r}, value={0.value!r})'.format(self)
+
+    def __new__(cls, bound_value_pairs, methods, name=None):
+        # Assumes dictionary to simplify interface
+        bound_values = dict(bound_value_pairs).items()
+        items = tuple(sorted(bound_values, key=itemgetter(0)))
+        s = super(Function, cls).__new__(cls, items, tuple(methods), name)
+        s._hash = hash(s)
+        return s
+
+    def hash(self):
+        return self._hash
+
+    @property
+    def bound_values(self):
+        return dict(self.bound_value_pairs)
+
+    def free_variables(self):
         """
-        Calculates reacable nodes
+        Free variables is the variables that needs to be bound to the function
+        for all of its methods to exceute. Calculated by finding the variables
+        used in all of the methods, and removing the bound_values from the
+        function.
+
+        :param self:
+            The function that we want to know the free variables of.
+
+        :returns: The set of free variables of a function.
         """
+
+        free_vars = [method.variables() for method in self.methods]
+        return (set.union(*free_vars) -
+                set(name for name, value in self.bound_value_pairs))
+
+    def bind_variables(self, arguments, transform=lambda n, x: x):
+        """
+        Returns an dictionary with all the needed values bound,
+        the tranform function, takes the input and transfroms it into
+        a format know to the analysis.
+
+        :param arguments:
+            A dictionary filled with the arguments that the programer wants
+            to bind to the function.
+
+        :param transform:
+            A function that transform any (allowed) object to an internal
+            notion that can be used for further analysis. The function also
+            takes a name of the variable to help context anaysis, As default it
+            does nothing, and allow all values.
+
+        :raises BadBound:
+            Exception if that arguments is not filling the entire free_variable
+            space, or if in overlapping with the allready bound variables.
+            For more infomation see :class:`BadBound`.
+
+        :returns:
+            A dictionary with all the bound values, a union of the already
+            bound values of the function, and the presented arguments. All
+            values presented in a format allowed by the transform
+        """
+        free_variables = self.free_variables()
+        if free_variables != set(arguments):
+            raise BadBound(self, free_variables, arguments)
+        return {
+            name: transform(name, value) for name, value in
+            chain(arguments.items(), self.bound_value_pairs)
+        }
+
+    def __str__(self):
+        return "{0.code}[{methods}]".format(
+            self, methods=', '.join(str(method) for method in self.methods)
+        )
+
+    @property
+    def code(self):
+        if self.name:
+            return self.name
+        else:
+            return 'f' + hex(id(self))
+
+
+class Method(namedtuple('Method', ['guard', 'statement'])):
+    """
+    The method is the branching part of the model, each method contains of a
+    guard and a statement, a method will not execute unless a guard evaluates
+    to true.
+
+    """
+
+    is_buildin = False
+
+    def variables(self):
+        """
+        A method which finds the variables used by the method to execute,
+        before all variables is ready a method, cannot fire.
+
+        :returns: the variables used by the method.
+        """
+        return set(
+            node for node in chain(
+                self.guard.dependencies(),
+                self.statement.dependencies()
+            ) if not isinstance(node, Node)
+        )
+
+    def __str__(self):
+        return "{0.guard!s} -> {0.statement!s}".format(self)
+
+
+class BuildInMethod(namedtuple('BuildInMethod', ['argmap', 'code'])):
+    """
+    The build in methods is special methods that does not contain a subflow.
+    These entities is therefor build in and unchangeable.
+
+    A build in method has two attributes a :attr:`argmap` and a :attr:`code`
+    attribute. The argmap is the argumentnames in the oder in which that they
+    should be called oppon the lower hardwar leves. The code attribute is the
+    buildin name, which can be used when building backends.
+    """
+
+    is_buildin = True
+
+    def variables(self):
+        """
+        Same as in the Method, but in the build in method this is all
+        found in advance.
+
+        :returns: the variables used by the method.
+        """
+        return set(self.argmap)
+
+    def __str__(self):
+        return self.code
+
+def store(named_nodes, container):
+    ns = (container(name, node) for name, node in named_nodes)
+    return tuple(sorted(ns, key=lambda source: source.name))
+
+
+class Node (namedtuple('Node', ['function', 'named_sources'])):
+    """
+    Node, if the function is load, then the sources are allowed to be a string
+    """
+
+    Source = namedtuple('Source', ['name', 'node'])
+    Source.__repr__ = lambda self: \
+        'Node.Source(name={0.name!r}, node={0.node!r})'.format(self)
+
+    def __new__(cls, function, named_sources):
+        """
+        New sorts the sources and puts them in the Source folder for later ease
+        of test of equality
+        """
+        sorted_sources = store(named_sources, cls.Source)
+        return super(Node, cls).__new__(cls, function, sorted_sources)
+
+    def dependencies(self):
+        """
+        Returns the dependencies of executing the node, ei the names of the
+        variables that should exist in initial values
+        """
+        sources = chain.from_iterable(node.sources for node in self.precedes())
+        return {
+            source for source in sources if not isinstance(source, Node)
+        }
+
+    @property
+    def names(self):
+        return (source.name for source in self.named_sources)
+
+    @property
+    def sources(self):
+        return (source.node for source in self.named_sources)
+
+    def precedes(self):
+        """
+        Returns the set of nodes that precedes the node. A node precedes an
+        other node if there is an direct path from the second node to the first
+        navigating thru the sources of the node.
+
+        The nodes are returned in order.
+
+        :param self:
+            The node from wich to evaluate the dominating set of
+            nodes
+
+        :returns:
+            all the nodes that precedes the node
+        """
+        node_numbers = {self: 0}
+
         visitors = deque((self,))
-        nodes = set()
-
         while visitors:
             next_vistor = visitors.pop()
-            nodes.add(next_vistor.sources)
-            visitors.extendleft(next_vistor.sources)
-
-        return nodes
-
-    def nodes_in_order(self):
-        """
-        Return the nodes in a partial ordering
-        """
-        node_numbers = {self : 0}
-
-        visitors = deque((self,))
-        while visitors:
-            next_vistor = visitors.pop()
-            for source in next_vistor.sources:
-                node_numbers[source] = node_numbers[next_vistor] + 1
-            visitors.extendleft(next_vistor.sources)
+            if all(isinstance(s, Node) for s in next_vistor.sources):
+                for source in next_vistor.sources:
+                    node_numbers[source] = node_numbers[next_vistor] + 1
+                visitors.extendleft(next_vistor.sources)
 
         return [node for node, index in
-                    sorted(node_numbers.items(), key=itemgetter(1)) ]
+                sorted(node_numbers.items(), key=itemgetter(1))]
 
-    def __repr__(self):
-        return self.name + "-" +  str(id(self))
-
-def node(name, sources=tuple(), methods=tuple()):
-    return Node(name, tuple(sources), tuple(methods))
-
-def visit(basenode, function):
-    """
-    A visitor for nodes.
-
-    :param basenode:
-        The basenode is the lowest node in the graph
-
-    :param function:
-        Is the function that for each node returns anything
-        . The function must accept a node, and a
-        dictionary maping the old nodes to new values::
-
-            function :=  Node, ( Node -> ? ) -> ?
-
-    :returns:
-        Whatever the function returns
-    """
-    mapping = {}
-    for node in reversed(basenode.nodes_in_order()):
-        mapping[node] = function(node, mapping)
-    return mapping[basenode]
-
-def link(methods):
-    """
-    Links the nodes to the methods
-    """
-    named_methods = {}
-    for method in methods:
-        named_methods.setdefault(method.name, []).append(method)
-
-    def add_methods(old_node, sources):
+    def project(self, values):
         """
-        Add methods to nodes, and returs a new node
+        Projects the values onto the names of the function
+
+        :returns:
+            A dict containing the value, name pairs.
         """
-        if old_node.sources:
-            return node(old_node.name,
-                    tuple(sources[src] for src in old_node.sources),
-                    named_methods[old_node.name])
-        else:
-            return old_node
+        return dict(zip(self.names, values))
 
-    for method in methods:
-        method.contraint = visit(method.contraint, add_methods)
-        if not method.is_buildin():
-            method.target = visit(method.target, add_methods)
+    def __str__(self):
+        if self.function.code == 'load':
+            return str(self.named_sources[0].node)
+        return "({0.function.code} {args})".format(
+            self, args=" ".join("%s=%s" % s for s in self.named_sources)
+        )
 
+    @property
+    def code(self):
+        """ returns the code of the node """
+        return 'n_' + hex(id(self))
+
+class ReductionNode(namedtuple('ReductionNode', ['function', 'reductor', 'maps', 'named_sources'])):
+
+    Source = namedtuple('Source', ['name', 'node'])
+    Source.__repr__ = lambda self: \
+        'ReductionNode.Source(name={0.name!r}, node={0.node!r})'.format(self)
+
+    def __new__(cls, function, reductor, maps, named_sources):
+        """
+        New sorts the sources and puts them in the Source folder for later ease
+        of test of equality
+        """
+        return super(ReductionNode, cls).__new__(
+            cls, function,
+            cls.Source(*reductor),
+            store(maps, cls.Source),
+            store(named_sources, cls.Source)
+        )
+    @property
+    def names(self):
+        return (source.name for source in chain([self.reductor], self.maps, self.named_sources))
+
+    @property
+    def sources(self):
+        return (source.node for source in chain([self.reductor], self.maps, self.named_sources))
+
+    dependencies = Node.dependencies
+    precedes = Node.precedes
+    project = Node.project
+
+    def reduction_project(self, sources):
+        """ Like the normal projection, but seperates the result into the tuples """
+        psources = tuple(zip(self.names, sources))
+        reductor = psources[0]
+        maps = psources[1:len(self.maps)+1]
+        return reductor, maps, psources[len(self.maps)+1:]
+
+    def __str__(self):
+        return "{reduct}[{maps}({0.function.code}{args})]".format(
+            self,
+            reduct="%s=%s" % self.reductor,
+            maps=" ".join("%s=%s" % s for s in self.maps) + " ",
+            args=" " + " ".join("%s=%s" % s for s in self.named_sources) if self.named_sources else ""
+        )
+
+    @property
+    def code(self):
+        """ returns the code of the reductionode """
+        return 'rn_' + hex(id(self))
